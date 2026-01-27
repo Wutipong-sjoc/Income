@@ -2,32 +2,21 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Sidebar Tabs</title>
+  <title>Sidebar + WASM</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="layout">
 
-  <!-- Sidebar -->
   <div class="sidebar">
-    <h2>ผลสลากกินแบ่งรัฐบาล</h2>
-
-    <button onclick="openTab('add')">➕ เพิ่มข้อมูล</button>
+    <h2>เมนู</h2>
     <button onclick="openTab('home')">🏠 Home</button>
-    <button onclick="openTab('login')">📧 Login</button>
+    <button onclick="openTab('add')">➕ เพิ่มข้อมูล</button>
+    <button onclick="openTab('login')">🔐 Login</button>
   </div>
 
-  <!-- Content -->
   <div class="content">
-
-    <div id="login" class="tab">
-      <h1>🔐 Login / Register</h1>
-      <input placeholder="Email"><br><br>
-      <input type="password" placeholder="Password"><br><br>
-      <button>Login</button>
-      <button>Register</button>
-    </div>
 
     <div id="home" class="tab active">
       <h1>🏠 Home</h1>
@@ -36,25 +25,27 @@
 
     <div id="add" class="tab">
       <h1>➕ เพิ่มข้อมูล</h1>
-      <p>ฟอร์มเพิ่มข้อมูล</p>
       <button onclick="testWasm()">ทดสอบ WASM</button>
+    </div>
+
+    <div id="login" class="tab">
+      <h1>🔐 Login</h1>
+      <input placeholder="Email"><br><br>
+      <input type="password" placeholder="Password">
     </div>
 
   </div>
 </div>
 
-<!-- โหลด WASM (ต้องเป็น module) -->
-<script type="module">
-  import Module from "./engine.js";
-
-  Module().then(m => {
+<script src="engine.js"></script>
+<script>
+  Engine().then(m => {
     console.log("✅ WASM ready");
-    window.wasm = m; // ให้ main.js เรียกใช้ได้
+    m.add = m.cwrap("add", "number", ["number", "number"]);
+    window.wasm = m;
   });
 </script>
 
-<!-- JS คุม UI -->
 <script src="main.js"></script>
-
 </body>
 </html>
