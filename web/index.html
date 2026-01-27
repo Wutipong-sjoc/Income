@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Sidebar Tabs</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <h2>ผลสลากกินแบ่งรัฐบาล</h2>
+
+    <button onclick="openTab('add')">➕ เพิ่มข้อมูล</button>
+    <button onclick="openTab('home')">🏠 Home</button>
+    <button onclick="openTab('login')">📧 Login</button>
+    
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+
+    <div id="login" class="tab">
+      <h1>🔐 Login / Register</h1>
+      <input placeholder="Email"><br><br>
+      <input type="password" placeholder="Password"><br><br>
+      <button>Login</button>
+      <button>Register</button>
+    </div>
+
+    <div id="home" class="tab active">
+      <h1>🏠 Home</h1>
+      <p>ยินดีต้อนรับ</p>
+    </div>
+
+    <div id="add" class="tab">
+      <h1>➕ เพิ่มข้อมูล</h1>
+      <p>ฟอร์มเพิ่มข้อมูล</p>
+    </div>
+
+  </div>
+</div>
+
+<script src="main.js"></script>
+</body>
+</html>
