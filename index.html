@@ -16,7 +16,6 @@
     <button onclick="openTab('add')">➕ เพิ่มข้อมูล</button>
     <button onclick="openTab('home')">🏠 Home</button>
     <button onclick="openTab('login')">📧 Login</button>
-    
   </div>
 
   <!-- Content -->
@@ -38,11 +37,24 @@
     <div id="add" class="tab">
       <h1>➕ เพิ่มข้อมูล</h1>
       <p>ฟอร์มเพิ่มข้อมูล</p>
+      <button onclick="testWasm()">ทดสอบ WASM</button>
     </div>
 
   </div>
 </div>
 
+<!-- โหลด WASM (ต้องเป็น module) -->
+<script type="module">
+  import Module from "./engine.js";
+
+  Module().then(m => {
+    console.log("✅ WASM ready");
+    window.wasm = m; // ให้ main.js เรียกใช้ได้
+  });
+</script>
+
+<!-- JS คุม UI -->
 <script src="main.js"></script>
+
 </body>
 </html>

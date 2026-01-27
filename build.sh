@@ -6,4 +6,4 @@ emcc engine/engine.cpp -O3 \
   -s MODULARIZE=1 \
   -s EXPORT_NAME="Engine" \
   -s EXPORTED_FUNCTIONS="['_add']" \
-  -o web/engine.js
+  -o engine.js
