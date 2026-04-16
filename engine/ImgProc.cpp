@@ -32,397 +32,432 @@ void TemplateNumber();
 void Matching(std::vector<std::vector<int>> img);
 // ----------------------------------------------------------------------- //
 
-int main()
-{   
-    TemplateNumber();
-    // std::ifstream f("/Users/wutipong/Desktop/Project/1-9/binary/7.pgm", std::ios::binary);
-    // std::ifstream f("/Users/wutipong/Desktop/Project/output7.pgm", std::ios::binary);
 
-    std::string magic;
+// int main()
+// {   
 
-    // อ่าน header
-    f >> magic >> w >> h >> maxv;
-    f.get(); // Avoiding newline
+extern "C" {
+    void myrun(unsigned char* input, int width, int height) {
 
-    // อ่าน pixel
-    data.resize(w * h);
-    std::vector<int> sumzero;
-    f.read((char *)data.data(), data.size());
+        low.clear();
+        numberdetected.clear();
+        data.clear();
+        finalnum = 0;
+        onetimecheck = true;
 
-    // แสดงข้อมูล
-    std::cout << "W=" << w << " H=" << h << "\n";
-    // std::cout << "First 10 pixels:\n";
+        // ตั้งค่า
+        w = width;
+        h = height;
+        maxv = 255;
 
-    //------------------Collecting low rows--------------------------------
+        data.clear();
+        data.resize(w * h);
 
-    // Collecting the values that have number of zero pixel between 50 to less than 50% of width.
-    valscr = w * 0.5; // 50% of width.
-    for (int y = 0; y < h; y++)
-    {
-        int count = 0;
-        for (int x = 0; x < w; x++)
-        {
-            if (data[y * w + x] == 0)
-            {
-                count++;
-            }
+        // copy data จาก JS
+        for (int i = 0; i < w * h; i++) {
+            data[i] = input[i];
         }
-        if (count > 10 && count < valscr)
-        {
-            // out << y << " " << count << "\n";
-            low.push_back(y);
-        }
-    }
 
-    // Finding sum of number of zero pixel in each column
-    for (int y = 0; y < low.size(); y++)
-    {
-        for (int x = 0; x < w; x++)
-        {
-            if (y == 0)
-            {
-                int v = data[low[y] * w + x];
-                if (v == 255)
-                {
-                    sumzero.push_back(0);
-                }
-                else
-                { // Finding sum of number of zero pixel in each column
-                    sumzero.push_back(1);
-                }
-            }
-            else
-            {
-                int v = data[low[y] * w + x];
-                if (v == 255)
-                {
-                    sumzero[x] += 0;
-                }
-                else
-                {
-                    sumzero[x] += 1;
-                }
-            }
-        }
-    }
+        TemplateNumber();
+        // std::ifstream f("/Users/wutipong/Desktop/Project/1-9/binary/7.pgm", std::ios::binary);
+        // std::ifstream f("/Users/wutipong/Desktop/Project/output7.pgm", std::ios::binary);
 
-    //---------------------------------------------------------------------
+        // std::string magic;
 
-    //------------------Borderless image screening.------------------------
-    int samplesize = 30; // Number of samples
-    float xbarF, xbarB;
-    float stddevF, stddevB, currentval, cvF, cvB;
+        // // อ่าน header
+        // f >> magic >> w >> h >> maxv;
+        // f.get(); // Avoiding newline
 
-    // Front coefficient of variation(cvF) calculation
-    xbarF = 0;
-    for (int i = 0; i < samplesize; i++)
-    {
-        xbarF += sumzero[i];
-    }
-    xbarF = xbarF / samplesize;
-    if (xbarF != 0)
-    {
-        for (int i = 0; i < samplesize; i++)
-        {
-            currentval = (sumzero[i] - xbarF) * (sumzero[i] - xbarF);
-            stddevF = stddevF + currentval;
-        }
-        stddevF = stddevF / (samplesize - 1);
-        stddevF = std::sqrt(stddevF);
-        cvF = (stddevF / xbarF) * 100;
-    }
-    else
-    {
-        cvF = 0;
-    }
+        // // อ่าน pixel
+        // data.resize(w * h);
+        std::vector<int> sumzero;
+        // f.read((char *)data.data(), data.size());
 
-    // Back coefficient of variation(cvB) calculation
-    xbarB = 0;
-    for (int i = sumzero.size() - 1; i > (sumzero.size() - samplesize - 1); i--)
-    {
-        xbarB += sumzero[i];
-    }
-    xbarB = xbarB / samplesize;
-    if (xbarB != 0)
-    {
-        for (int i = sumzero.size() - 1; i > (sumzero.size() - samplesize - 1); i--)
-        {
-            currentval = (sumzero[i] - xbarB) * (sumzero[i] - xbarB);
-            stddevB = stddevB + currentval;
-        }
-        stddevB = stddevB / (samplesize - 1);
-        stddevB = std::sqrt(stddevB);
-        cvB = (stddevB / xbarB) * 100;
-    }
-    else
-    {
-        cvB = 0;
-    }
+        // // แสดงข้อมูล
+        // std::cout << "W=" << w << " H=" << h << "\n";
+        // std::cout << "First 10 pixels:\n";
 
-    // Finding FrontVal and BackVal
-    FrontVal = 0;
-    BackVal = 0;
-    float sumval = 0;
-    float previousval = 0;
-    xbarF = 0;
-    xbarB = 0;
-    float calval;
-    if (cvF <= 10 && cvB <= 10)
-    {
-        if (cvF == 0 && cvB == 0)
-        {
-            // FrontVal
-            for (int i = 0; i < sumzero.size() - 1; i++)
-            {
-                if (sumzero[i] != 0)
-                {
-                    FrontVal = i;
-                    break;
-                }
-            }
-            // BackVal
-            for (int i = sumzero.size() - 1; i > 0; i--)
-            {
-                if (sumzero[i] != 0)
-                {
-                    BackVal = i;
-                    break;
-                }
-            }
-        }
-        else
-        {
-            // FrontVal
-            for (int i = 0; i < sumzero.size() - 1; i++)
-            {
-                if (i < samplesize)
-                {
-                    sumval += sumzero[i];
-                    xbarF = sumval / (i + 1);
-                    previousval = xbarF;
-                }
-                else
-                {
-                    sumval += sumzero[i];
-                    xbarF = sumval / (i + 1);
-                    if (xbarF < previousval)
-                    {
-                        calval = 100 - ((xbarF / previousval) * 100);
-                        if (calval > 0.9)
-                        {
-                            FrontVal = i + 1;
-                            break;
-                        }
-                        else
-                        {
-                            previousval = xbarF;
-                        }
-                    }
-                    else
-                    {
-                        previousval = xbarF;
-                    }
-                }
-            }
-            // Backval
-            sumval = 0;
-            int counter = 1;
-            for (int i = sumzero.size() - 1; i > 0; i--)
-            {
-                if (i > sumzero.size() - samplesize - 1)
-                {
-                    sumval += sumzero[i];
-                    xbarB = sumval / counter;
-                    previousval = xbarB;
-                }
-                else
-                {
-                    sumval += sumzero[i];
-                    xbarB = sumval / counter;
-                    if (xbarB < previousval)
-                    {
-                        calval = 100 - ((xbarB / previousval) * 100);
-                        if (calval > 0.9)
-                        {
-                            BackVal = i + 1;
-                            break;
-                        }
-                        else
-                        {
-                            previousval = xbarB;
-                        }
-                    }
-                    else
-                    {
-                        previousval = xbarB;
-                    }
-                }
-                counter++;
-            }
-        }
-    }
 
-    if (FrontVal != 0 && BackVal != 0)
-    {
-        std::vector<int>().swap(low); // clear the vector and set the capacity to 0
+        //------------------Collecting low rows--------------------------------
+
+        // Collecting the values that have number of zero pixel between 50 to less than 50% of width.
+        valscr = w * 0.5; // 50% of width.
         for (int y = 0; y < h; y++)
         {
             int count = 0;
-            for (int x = FrontVal; x <= BackVal; x++)
+            for (int x = 0; x < w; x++)
             {
                 if (data[y * w + x] == 0)
                 {
                     count++;
                 }
             }
-            if (count > 50 && count < valscr)
+            if (count > 10 && count < valscr)
             {
                 // out << y << " " << count << "\n";
                 low.push_back(y);
             }
         }
-    }
 
-    //--------------------------------------------------------------------
-
-    std::vector<int>().swap(sumzero);
-    int seq = low[0] - 1;
-    int count, firstY;
-    bool cont = true;
-    if (FrontVal == 0 && BackVal == 0)
-    { // When the image is borderless, we will process all columns.
-        FrontVal = 0;
-        BackVal = w - 1;
-    }
-
-    for (int y = 0; y < low.size(); y++)
-    {
-        count = 0;
-        if (low[y] - seq == 1)
+        // Finding sum of number of zero pixel in each column
+        for (int y = 0; y < low.size(); y++)
         {
-            for (int x = FrontVal; x <= BackVal; x++)
+            for (int x = 0; x < w; x++)
             {
-                if (cont == true)
+                if (y == 0)
                 {
-                    firstY = y;
                     int v = data[low[y] * w + x];
                     if (v == 255)
                     {
                         sumzero.push_back(0);
-                        // out << 1 << " ";
                     }
                     else
                     { // Finding sum of number of zero pixel in each column
                         sumzero.push_back(1);
-                        // out << v << " ";
                     }
-                    count++;
                 }
                 else
                 {
                     int v = data[low[y] * w + x];
                     if (v == 255)
                     {
-                        sumzero[count] += 0;
-                        // out << 1 << " ";
+                        sumzero[x] += 0;
                     }
                     else
                     {
-                        sumzero[count] += 1;
-                        // out << v << " ";
+                        sumzero[x] += 1;
                     }
-                    count++;
                 }
             }
-            cont = false;
-            // out << "\n";
+        }
+
+        //---------------------------------------------------------------------
+
+        //------------------Borderless image screening.------------------------
+        int samplesize = 30; // Number of samples
+        float xbarF, xbarB;
+        float currentval, cvF, cvB;
+        float stddevF = 0, stddevB = 0;
+
+        // Front coefficient of variation(cvF) calculation
+        xbarF = 0;
+        for (int i = 0; i < samplesize; i++)
+        {
+            xbarF += sumzero[i];
+        }
+        xbarF = xbarF / samplesize;
+        if (xbarF != 0)
+        {
+            for (int i = 0; i < samplesize; i++)
+            {
+                currentval = (sumzero[i] - xbarF) * (sumzero[i] - xbarF);
+                stddevF = stddevF + currentval;
+            }
+            stddevF = stddevF / (samplesize - 1);
+            stddevF = std::sqrt(stddevF);
+            cvF = (stddevF / xbarF) * 100;
         }
         else
         {
-
-            if (low[y - 1] - low[firstY] >= 14)
-            {
-                // if (loopp == 9)
-                // {
-                    processdata(sumzero, low[firstY], low[y - 1]);
-                // }
-                // loopp++;
-            }
-
-            // std::cout << "----------------------------------------" << "\n";
-
-            sumzero.clear();
-            cont = true;
-            // out << "\n";
-            // out << "\n";
-
-            for (int x = FrontVal; x <= BackVal; x++)
-            {
-                if (cont == true)
-                {
-                    firstY = y;
-                    int v = data[low[y] * w + x];
-                    if (v == 255)
-                    {
-                        sumzero.push_back(0);
-                        // out << 1 << " ";
-                    }
-                    else
-                    { // Finding sum of number of zero pixel in each column
-                        sumzero.push_back(1);
-                        // out << v << " ";
-                    }
-                    count++;
-                }
-                else
-                {
-                    int v = data[low[y] * w + x];
-                    if (v == 255)
-                    {
-                        sumzero[count] += 0;
-                        // out << 1 << " ";
-                    }
-                    else
-                    {
-                        sumzero[count] += 1;
-                        // out << v << " ";
-                    }
-                    count++;
-                }
-            }
-            cont = false;
-            // out << "\n";
+            cvF = 0;
         }
-        seq = low[y]; // collect old value to compare with next value.
+
+        // Back coefficient of variation(cvB) calculation
+        xbarB = 0;
+        for (int i = sumzero.size() - 1; i > (sumzero.size() - samplesize - 1); i--)
+        {
+            xbarB += sumzero[i];
+        }
+        xbarB = xbarB / samplesize;
+        if (xbarB != 0)
+        {
+            for (int i = sumzero.size() - 1; i > (sumzero.size() - samplesize - 1); i--)
+            {
+                currentval = (sumzero[i] - xbarB) * (sumzero[i] - xbarB);
+                stddevB = stddevB + currentval;
+            }
+            stddevB = stddevB / (samplesize - 1);
+            stddevB = std::sqrt(stddevB);
+            cvB = (stddevB / xbarB) * 100;
+        }
+        else
+        {
+            cvB = 0;
+        }
+
+        // Finding FrontVal and BackVal
+        FrontVal = 0;
+        BackVal = 0;
+        float sumval = 0;
+        float previousval = 0;
+        xbarF = 0;
+        xbarB = 0;
+        float calval;
+        if (cvF <= 10 && cvB <= 10)
+        {
+            if (cvF == 0 && cvB == 0)
+            {
+                // FrontVal
+                for (int i = 0; i < sumzero.size() - 1; i++)
+                {
+                    if (sumzero[i] != 0)
+                    {
+                        FrontVal = i;
+                        break;
+                    }
+                }
+                // BackVal
+                for (int i = sumzero.size() - 1; i > 0; i--)
+                {
+                    if (sumzero[i] != 0)
+                    {
+                        BackVal = i;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                // FrontVal
+                for (int i = 0; i < sumzero.size() - 1; i++)
+                {
+                    if (i < samplesize)
+                    {
+                        sumval += sumzero[i];
+                        xbarF = sumval / (i + 1);
+                        previousval = xbarF;
+                    }
+                    else
+                    {
+                        sumval += sumzero[i];
+                        xbarF = sumval / (i + 1);
+                        if (xbarF < previousval)
+                        {
+                            calval = 100 - ((xbarF / previousval) * 100);
+                            if (calval > 0.9)
+                            {
+                                FrontVal = i + 1;
+                                break;
+                            }
+                            else
+                            {
+                                previousval = xbarF;
+                            }
+                        }
+                        else
+                        {
+                            previousval = xbarF;
+                        }
+                    }
+                }
+                // Backval
+                sumval = 0;
+                int counter = 1;
+                for (int i = sumzero.size() - 1; i > 0; i--)
+                {
+                    if (i > sumzero.size() - samplesize - 1)
+                    {
+                        sumval += sumzero[i];
+                        xbarB = sumval / counter;
+                        previousval = xbarB;
+                    }
+                    else
+                    {
+                        sumval += sumzero[i];
+                        xbarB = sumval / counter;
+                        if (xbarB < previousval)
+                        {
+                            calval = 100 - ((xbarB / previousval) * 100);
+                            if (calval > 0.9)
+                            {
+                                BackVal = i + 1;
+                                break;
+                            }
+                            else
+                            {
+                                previousval = xbarB;
+                            }
+                        }
+                        else
+                        {
+                            previousval = xbarB;
+                        }
+                    }
+                    counter++;
+                }
+            }
+        }
+
+        if (FrontVal != 0 && BackVal != 0)
+        {
+            std::vector<int>().swap(low); // clear the vector and set the capacity to 0
+            for (int y = 0; y < h; y++)
+            {
+                int count = 0;
+                for (int x = FrontVal; x <= BackVal; x++)
+                {
+                    if (data[y * w + x] == 0)
+                    {
+                        count++;
+                    }
+                }
+                if (count > 50 && count < valscr)
+                {
+                    // out << y << " " << count << "\n";
+                    low.push_back(y);
+                }
+            }
+        }
+
+        //--------------------------------------------------------------------
+
+        std::vector<int>().swap(sumzero);
+
+        if (low.empty()) return;
+
+        int seq = low[0] - 1;
+        int count, firstY;
+        bool cont = true;
+        if (FrontVal == 0 && BackVal == 0)
+        { // When the image is borderless, we will process all columns.
+            FrontVal = 0;
+            BackVal = w - 1;
+        }
+
+        for (int y = 0; y < low.size(); y++)
+        {
+            count = 0;
+            if (low[y] - seq == 1)
+            {
+                for (int x = FrontVal; x <= BackVal; x++)
+                {
+                    if (cont == true)
+                    {
+                        firstY = y;
+                        int v = data[low[y] * w + x];
+                        if (v == 255)
+                        {
+                            sumzero.push_back(0);
+                            // out << 1 << " ";
+                        }
+                        else
+                        { // Finding sum of number of zero pixel in each column
+                            sumzero.push_back(1);
+                            // out << v << " ";
+                        }
+                        count++;
+                    }
+                    else
+                    {
+                        int v = data[low[y] * w + x];
+                        if (v == 255)
+                        {
+                            sumzero[count] += 0;
+                            // out << 1 << " ";
+                        }
+                        else
+                        {
+                            sumzero[count] += 1;
+                            // out << v << " ";
+                        }
+                        count++;
+                    }
+                }
+                cont = false;
+                // out << "\n";
+            }
+            else
+            {
+
+                if (low[y - 1] - low[firstY] >= 14)
+                {
+                    // if (loopp == 9)
+                    // {
+                        processdata(sumzero, low[firstY], low[y - 1]);
+                    // }
+                    // loopp++;
+                }
+
+                // std::cout << "----------------------------------------" << "\n";
+
+                sumzero.clear();
+                cont = true;
+                // out << "\n";
+                // out << "\n";
+
+                for (int x = FrontVal; x <= BackVal; x++)
+                {
+                    if (cont == true)
+                    {
+                        firstY = y;
+                        int v = data[low[y] * w + x];
+                        if (v == 255)
+                        {
+                            sumzero.push_back(0);
+                            // out << 1 << " ";
+                        }
+                        else
+                        { // Finding sum of number of zero pixel in each column
+                            sumzero.push_back(1);
+                            // out << v << " ";
+                        }
+                        count++;
+                    }
+                    else
+                    {
+                        int v = data[low[y] * w + x];
+                        if (v == 255)
+                        {
+                            sumzero[count] += 0;
+                            // out << 1 << " ";
+                        }
+                        else
+                        {
+                            sumzero[count] += 1;
+                            // out << v << " ";
+                        }
+                        count++;
+                    }
+                }
+                cont = false;
+                // out << "\n";
+            }
+            seq = low[y]; // collect old value to compare with next value.
+        }
+
+
+        //--------------------result output--------------------------
+
+        // for (int i = 0; i < numberdetected.size(); i++)
+        // {
+        //     std::cout << numberdetected[i] << "\n";
+        // }
+        
+        int power = -2;
+        double prevnum = 0;
+        for (int i = 0; i < numberdetected.size(); i++){
+            prevnum = numberdetected[i] * pow(10,power + i);
+            finalnum = finalnum + prevnum;
+            prevnum = 0;
+        }
+
+        // std::cout << finalnum << "\n";
+        //---------------------End section---------------------
+        // Time stamp
+        auto now = std::chrono::system_clock::now();
+        std::time_t t = std::chrono::system_clock::to_time_t(now);
+        std::cout << "Program completed: " << std::put_time(std::localtime(&t), "%H:%M:%S") << "\n";
+        // Hist();
+        // printofile(w);
+        return;
     }
-
-
-    //--------------------result output--------------------------
-
-    // for (int i = 0; i < numberdetected.size(); i++)
-    // {
-    //     std::cout << numberdetected[i] << "\n";
-    // }
     
-    int power = -2;
-    double prevnum = 0;
-    for (int i = 0; i < numberdetected.size(); i++){
-        prevnum = numberdetected[i] * pow(10,power + i);
-        finalnum = finalnum + prevnum;
-        prevnum = 0;
+    double get_final() {
+        return finalnum;
     }
-
-    std::cout << finalnum << "\n";
-
-    //---------------------End section---------------------
-    // Time stamp
-    auto now = std::chrono::system_clock::now();
-    std::time_t t = std::chrono::system_clock::to_time_t(now);
-    std::cout << "Program completed: " << std::put_time(std::localtime(&t), "%H:%M:%S") << "\n";
-    // Hist();
-    // printofile(w);
-    return 0;
 }
+
+
 
 void Hist()
 {

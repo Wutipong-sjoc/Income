@@ -25,7 +25,12 @@
 
     <div id="add" class="tab">
       <h1>➕ เพิ่มข้อมูล</h1>
-      <button onclick="testWasm()">ทดสอบ WASM</button>
+      <!-- <button onclick="test()">กด</button> -->
+
+      <input type="file" id="imgInput">
+      <button onclick="convert()">แปลง</button>
+      <button onclick="convertdown()">Download</button>
+      
     </div>
 
     <div id="login" class="tab">
@@ -37,15 +42,10 @@
   </div>
 </div>
 
-<script src="engine.js"></script>
-<script>
-  Engine().then(m => {
-    console.log("✅ WASM ready");
-    m.add = m.cwrap("add", "number", ["number", "number"]);
-    window.wasm = m;
-  });
-</script>
-
+<!-- <script src="add.js"></script> -->
+<script src="engine_myrun.js"></script>
 <script src="main.js"></script>
+
+
 </body>
 </html>
