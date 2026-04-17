@@ -9,17 +9,24 @@
 
 //------------------------ Global variables---------------------------------//
 std::vector<int> low;
-std::vector<int> numberdetected;
+std::vector<int> numberdetectedINT;
+std::vector<std::string> numberdetectedSTR;
 std::vector<std::vector<int>> CollectData; // 2D vector to collect the data.
 std::ofstream out("output.txt");
 std::vector<unsigned char> data;
+
+struct Template {
+    std::string name;
+    std::vector<std::vector<int>> data;
+};
+std::vector<Template> templateNum;
+
 int FrontVal, BackVal;
 int w, h, maxv, valscr;
 int loopp;
 int cc = 0;
 int ccc = 0;
 bool onetimecheck = true;
-std::vector<std::vector<std::vector<int>>> templateNum;
 double finalnum = 0;
 // ----------------------------------------------------------------------- //
 
@@ -28,10 +35,10 @@ void Hist();
 void printofile(int w);
 void processdata(std::vector<int> sumzero, int firstY, int lastY);
 std::vector<std::vector<int>> Resize(std::vector<std::vector<int>> img, int newWidth, int newHeight);
+std::vector<int> nameToDigit(std::vector<std::string> num);
 void TemplateNumber();
 void Matching(std::vector<std::vector<int>> img);
 // ----------------------------------------------------------------------- //
-
 
 // int main()
 // {   
@@ -40,7 +47,8 @@ extern "C" {
     void myrun(unsigned char* input, int width, int height) {
 
         low.clear();
-        numberdetected.clear();
+        numberdetectedINT.clear();
+        numberdetectedSTR.clear();
         data.clear();
         finalnum = 0;
         onetimecheck = true;
@@ -433,10 +441,11 @@ extern "C" {
         //     std::cout << numberdetected[i] << "\n";
         // }
         
+        numberdetectedINT = nameToDigit(numberdetectedSTR);
         int power = -2;
         double prevnum = 0;
-        for (int i = 0; i < numberdetected.size(); i++){
-            prevnum = numberdetected[i] * pow(10,power + i);
+        for (int i = 0; i < numberdetectedINT.size(); i++){
+            prevnum = numberdetectedINT[i] * pow(10,power + i);
             finalnum = finalnum + prevnum;
             prevnum = 0;
         }
@@ -456,8 +465,6 @@ extern "C" {
         return finalnum;
     }
 }
-
-
 
 void Hist()
 {
@@ -1095,6 +1102,7 @@ std::vector<std::vector<int>> Resize(std::vector<std::vector<int>> img, int newW
 }
 
 void TemplateNumber(){
+
     std::vector<std::vector<int>> zero = {
         {1,1,1,0,0,0,0,0,1,1},
         {1,1,0,0,1,1,0,0,0,1},
@@ -1109,7 +1117,20 @@ void TemplateNumber(){
     };
 
     std::vector<std::vector<int>> one = {
-        {1,1,1,1,0,0,0,0,0,0},
+        {1,1,1,0,0,0,0,1,1,1},
+        {1,1,0,0,0,0,0,1,1,1},
+        {0,0,0,1,1,0,0,1,1,1},
+        {1,0,1,1,1,0,0,1,1,1},
+        {1,1,1,1,1,0,0,1,1,1},
+        {1,1,1,1,1,0,0,1,1,1},
+        {1,1,1,1,1,0,0,1,1,1},
+        {1,1,1,1,1,0,0,1,1,1},
+        {0,0,0,0,0,0,0,0,0,0},
+        {0,0,0,0,0,0,0,0,0,0}
+    };
+
+    std::vector<std::vector<int>> one1 = {
+        {1,1,1,1,1,0,0,0,0,0},
         {0,0,0,0,0,0,0,0,0,0},
         {1,1,1,1,1,1,0,0,0,0},
         {1,1,1,1,1,1,0,0,0,0},
@@ -1224,57 +1245,96 @@ void TemplateNumber(){
         {1,1,1,1,1,1,1,0,0,1},
         {1,0,0,0,0,0,0,0,0,1}
     };
-    templateNum = {
-        zero,
-        one,
-        two,
-        three,
-        four,
-        five,
-        six,
-        seven,
-        eight,
-        nine
-    };
+
+    templateNum.push_back({"zero", zero});
+    templateNum.push_back({"one", one});
+    templateNum.push_back({"one1", one1});
+    templateNum.push_back({"two", two});
+    templateNum.push_back({"three", three});
+    templateNum.push_back({"four", four});
+    templateNum.push_back({"five", five});
+    templateNum.push_back({"six", six});
+    templateNum.push_back({"seven", seven});
+    templateNum.push_back({"eight", eight});
+    templateNum.push_back({"nine", nine});
 }
 
 void Matching(std::vector<std::vector<int>> img){
-    std::vector<int> numcheck;
-    int countmatch = 0;
-    int screennoise = 0;
+
+    int bestScore = -1;
+    int bestIndex = -1;
 
     for (int i = 0; i < templateNum.size(); i++){
-        bool scr = true;
-        for (int y = 0; y < templateNum[i].size(); y++){
-            for (int x = 0; x < templateNum[i][y].size(); x++){
-                if (img[y][x] == templateNum[i][y][x]){
+
+        int countmatch = 0;
+
+        for (int y = 0; y < templateNum[i].data.size(); y++){
+            for (int x = 0; x < templateNum[i].data[y].size(); x++){
+
+                if (img[y][x] == templateNum[i].data[y][x]){
                     countmatch++;
                 }
-                screennoise = screennoise + img[y][x];
-            }
-            if (screennoise == 80){
-                scr = false;
-                break;
             }
         }
-        if (scr == true){
-            numcheck.push_back(countmatch);
+
+        if (countmatch > bestScore){
+            bestScore = countmatch;
+            bestIndex = i;
         }
-        countmatch = 0;
-        screennoise = 0;
     }
 
-    int lastnum = -1000000;
-    int number = 0;
-    for (int i = 0; i < numcheck.size(); i++){
-        if (numcheck[i] > lastnum){
-            lastnum = numcheck[i];
-            number = i;
+    double similarity = (double)bestScore / 100.0;
+
+    if (similarity < 0.70){
+        // std::cout << "Detected: UNKNOWN" << std::endl;
+        return;
+    }
+
+    std::string result = templateNum[bestIndex].name;
+    numberdetectedSTR.push_back(result);
+
+    // std::cout << "Detected: " << result 
+    //           << " (" << similarity * 100 << "%)" << std::endl;
+}
+
+std::vector<int> nameToDigit(std::vector<std::string> num){
+    
+    std::vector<int> result;
+
+    for (int i = 0; i < num.size(); i++){
+        if (num[i].find("zero") == 0){
+            result.push_back(0);
+        }
+        else if (num[i].find("one") == 0){
+            result.push_back(1);
+        }
+        else if (num[i].find("two") == 0){
+            result.push_back(2);
+        }
+        else if (num[i].find("three") == 0){
+            result.push_back(3);
+        }
+        else if (num[i].find("four") == 0){
+            result.push_back(4);
+        }
+        else if (num[i].find("five") == 0){
+            result.push_back(5);
+        }
+        else if (num[i].find("six") == 0){
+            result.push_back(6);
+        }
+        else if (num[i].find("seven") == 0){
+            result.push_back(7);
+        }
+        else if (num[i].find("eight") == 0){
+            result.push_back(8);
+        }
+        else if (num[i].find("nine") == 0){
+            result.push_back(9);
         }
     }
-    if (numcheck.size() != 0){
-        numberdetected.push_back(number);
-    }
+    
+    return result;
 }
 
 // Output sumzero to output.txt
@@ -1301,3 +1361,27 @@ void Matching(std::vector<std::vector<int>> img){
 // }
 // out << "\n";
 // out << "\n";
+
+// void Matching(std::vector<std::vector<int>> img){
+//     int bestScore = -1;
+//     int bestIndex = -1;
+//     for (int i = 0; i < templateNum.size(); i++){
+//         int countmatch = 0;
+//         for (int y = 0; y < templateNum[i].data.size(); y++){
+//             for (int x = 0; x < templateNum[i].data[y].size(); x++){
+//                 if (img[y][x] == templateNum[i].data[y][x]){
+//                     countmatch++;
+//                 }
+//             }
+//         }
+//         if (countmatch > bestScore){
+//             bestScore = countmatch;
+//             bestIndex = i;
+//         }
+//     }
+//     if (bestIndex != -1){
+//         std::string result = templateNum[bestIndex].name;
+//         numberdetectedSTR.push_back(result);
+//         std::cout << "Detected: " << result << std::endl;
+//     }
+// }
