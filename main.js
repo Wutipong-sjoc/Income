@@ -17,13 +17,30 @@ Engine().then(m => {
 
   wasm = m;
   ready = true;
-
-  console.log("malloc =", wasm._malloc);
 });
 
+// ✅ print ลง textarea
+function printToBox(msg) {
+  const box = document.getElementById("outputBox");
+  if (!box) return;
+
+  box.value += msg + "\n";
+  box.scrollTop = box.scrollHeight;
+}
+
+// ✅ log = console + หน้าเว็บ
+function log(msg) {
+  console.log(msg);
+  printToBox(msg);
+}
+
 function convert() {
+  // ✅ เคลียร์ก่อนเริ่ม
+  const box = document.getElementById("outputBox");
+  if (box) box.value = "";
+
   console.log("CLICKED");
-  console.log("ready =", ready);
+  console.log("ready = " + ready);
 
   if (!ready) {
     alert("WASM ยังโหลดไม่เสร็จ ❗");
@@ -45,7 +62,7 @@ function convert() {
     }
 
     const file = files[index++];
-    console.log(`📂 ${index}/${files.length} → ${file.name}`);
+    log(`📂 ${index}/${files.length} → ${file.name}`);
 
     const img = new Image();
     img.src = URL.createObjectURL(file);
@@ -74,11 +91,11 @@ function convert() {
       const ptr = wasm._malloc(binary.length);
       wasm.HEAPU8.set(binary, ptr);
 
-      console.log("🚀 RUN PGM", width, height);
+      console.log("🚀 RUN PGM " + width + " " + height);
       wasm.myrun(ptr, width, height);
 
       const final = wasm.get_final();
-      console.log("FINAL =", final);
+      log("FINAL = " + final);
 
       wasm._free(ptr);
       URL.revokeObjectURL(img.src);
@@ -87,14 +104,13 @@ function convert() {
     };
 
     img.onerror = () => {
-      console.log("❌ โหลดไม่ได้:", file.name);
+      log("❌ โหลดไม่ได้: " + file.name);
       runNext();
     };
   }
 
   runNext();
 }
-
 
 function convertdown() {
   const file = document.getElementById("imgInput").files[0];
@@ -116,10 +132,8 @@ function convertdown() {
 
     const { data } = ctx.getImageData(0, 0, width, height);
 
-    // 🔥 header (P5)
     const header = `P5\n${width} ${height}\n255\n`;
 
-    // 🔥 pixel จริง
     const pixels = new Uint8Array(width * height);
 
     let j = 0;
@@ -128,85 +142,13 @@ function convertdown() {
       pixels[j++] = gray > 127 ? 255 : 0;
     }
 
-    // 🔥 รวม header + binary
-    const blob = new Blob([
-      header,
-      pixels
-    ], { type: "application/octet-stream" });
+    const blob = new Blob([header, pixels], {
+      type: "application/octet-stream"
+    });
 
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "output.pgm";
     a.click();
   };
-}
-
-function loadPGM() {
-
-  if (!ready) {
-    alert("WASM ยังโหลดไม่เสร็จ ❗");
-    return;
-  }
-
-  const file = document.getElementById("pgmInput").files[0];
-  if (!file) {
-    alert("เลือกไฟล์ .pgm ก่อน");
-    return;
-  }
-
-  console.log("ชื่อไฟล์:", file.name);
-
-  const reader = new FileReader();
-  reader.readAsArrayBuffer(file);
-
-  reader.onload = () => {
-    const buf = new Uint8Array(reader.result);
-
-    let i = 0;
-    function readLine() {
-      let line = "";
-      while (i < buf.length && buf[i] !== 10) {
-        line += String.fromCharCode(buf[i++]);
-      }
-      i++;
-      return line.trim();
-    }
-
-    const magic = readLine();
-    if (magic !== "P5") {
-      alert("ไม่ใช่ไฟล์ PGM binary (P5)");
-      return;
-    }
-
-    let dimLine = readLine();
-    while (dimLine.startsWith("#")) dimLine = readLine();
-
-    const [width, height] = dimLine.split(" ").map(Number);
-    readLine(); // maxval
-
-    const pixels = buf.slice(i, i + width * height);
-    const binary = new Uint8Array(width * height);
-    for (let k = 0; k < pixels.length; k++) {
-      binary[k] = pixels[k] > 127 ? 255 : 0;
-    }
-
-    const ptr = wasm._malloc(binary.length);
-    wasm.HEAPU8.set(binary, ptr);
-
-    console.log("🚀 RUN PGM", width, height);
-    wasm.myrun(ptr, width, height);
-
-    const final = wasm.get_final();
-    console.log("FINAL =", final);
-
-    wasm._free(ptr);
-  };
-}
-
-function download(text, filename) {
-  const blob = new Blob([text], { type: "text/plain" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
 }
