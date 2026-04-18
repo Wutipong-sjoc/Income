@@ -5,71 +5,6 @@ function openTab(id) {
   document.getElementById(id).classList.add("active");
 }
 
-
-// โหลด WASM
-// AddModule().then(m => {
-//     console.log("✅ WASM ready");
-
-//     m.add = m.cwrap("add", "number", ["number", "number"]);
-//     wasm = m;
-// });
-
-// // function ที่ปุ่มเรียก
-// function test() {
-//     if (!wasm) {
-//         alert("ยังไม่พร้อม");
-//         return;
-//     }
-
-//     const result = wasm.add(5, 7);
-//     alert("ผล = " + result);
-// }
-
-// function convert() {
-//   const file = document.getElementById("imgInput").files[0];
-//   if (!file) return alert("เลือกรูปก่อน");
-
-//   const img = new Image();
-//   img.src = URL.createObjectURL(file);
-
-//   img.onload = () => {
-//     const canvas = document.createElement("canvas");
-//     const ctx = canvas.getContext("2d");
-
-//     const width = img.width;
-//     const height = img.height;
-
-//     canvas.width = width;
-//     canvas.height = height;
-//     ctx.drawImage(img, 0, 0);
-
-//     const { data } = ctx.getImageData(0, 0, width, height);
-
-//     // 🔥 header (P5)
-//     const header = `P5\n${width} ${height}\n255\n`;
-
-//     // 🔥 pixel จริง
-//     const pixels = new Uint8Array(width * height);
-
-//     let j = 0;
-//     for (let i = 0; i < data.length; i += 4) {
-//       const gray = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
-//       pixels[j++] = gray > 127 ? 255 : 0;
-//     }
-
-//     // 🔥 รวม header + binary
-//     const blob = new Blob([
-//       header,
-//       pixels
-//     ], { type: "application/octet-stream" });
-
-//     const a = document.createElement("a");
-//     a.href = URL.createObjectURL(blob);
-//     a.download = "output.pgm";
-//     a.click();
-//   };
-// }
-
 let wasm = null;
 let ready = false;
 
@@ -86,10 +21,7 @@ Engine().then(m => {
   console.log("malloc =", wasm._malloc);
 });
 
-
-//🔥 แปลงรูป + ส่งเข้า WASM
 function convert() {
-  
   console.log("CLICKED");
   console.log("ready =", ready);
 
@@ -98,56 +30,71 @@ function convert() {
     return;
   }
 
-  const file = document.getElementById("imgInput").files[0];
-  if (!file) {
+  const files = document.getElementById("imgInput").files;
+  if (!files.length) {
     alert("เลือกรูปก่อน");
     return;
   }
 
-  const img = new Image();
-  img.src = URL.createObjectURL(file);
+  let index = 0;
 
-  img.onload = () => {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-
-    const width = img.width;
-    const height = img.height;
-
-    canvas.width = width;
-    canvas.height = height;
-    ctx.drawImage(img, 0, 0);
-
-    const { data } = ctx.getImageData(0, 0, width, height);
-
-    // 🔥 แปลงเป็น binary (0 / 255)
-    const binary = new Uint8Array(width * height);
-
-    let j = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      const gray = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
-      binary[j++] = gray > 127 ? 255 : 0;
+  function runNext() {
+    if (index >= files.length) {
+      console.log("✅ ทำครบทุกไฟล์แล้ว");
+      return;
     }
 
-    // 🔥 malloc
-    const ptr = wasm._malloc(binary.length);
+    const file = files[index++];
+    console.log(`📂 ${index}/${files.length} → ${file.name}`);
 
-    // 🔥 copy เข้า WASM memory
-    wasm.HEAPU8.set(binary, ptr);
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
 
-    console.log("🚀 RUN");
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
 
-    // 🔥 run C++
-    wasm.myrun(ptr, width, height);
+      const width = img.width;
+      const height = img.height;
 
-    // 🔥 เอาผลลัพธ์
-    const final = wasm.get_final();
-    console.log("FINAL =", final);
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0);
 
-    // 🔥 free memory
-    wasm._free(ptr);
-  };
+      const { data } = ctx.getImageData(0, 0, width, height);
+
+      const binary = new Uint8Array(width * height);
+      let j = 0;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const gray = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+        binary[j++] = gray > 127 ? 255 : 0;
+      }
+
+      const ptr = wasm._malloc(binary.length);
+      wasm.HEAPU8.set(binary, ptr);
+
+      console.log("🚀 RUN PGM", width, height);
+      wasm.myrun(ptr, width, height);
+
+      const final = wasm.get_final();
+      console.log("FINAL =", final);
+
+      wasm._free(ptr);
+      URL.revokeObjectURL(img.src);
+
+      runNext();
+    };
+
+    img.onerror = () => {
+      console.log("❌ โหลดไม่ได้:", file.name);
+      runNext();
+    };
+  }
+
+  runNext();
 }
+
 
 function convertdown() {
   const file = document.getElementById("imgInput").files[0];
@@ -191,6 +138,68 @@ function convertdown() {
     a.href = URL.createObjectURL(blob);
     a.download = "output.pgm";
     a.click();
+  };
+}
+
+function loadPGM() {
+
+  if (!ready) {
+    alert("WASM ยังโหลดไม่เสร็จ ❗");
+    return;
+  }
+
+  const file = document.getElementById("pgmInput").files[0];
+  if (!file) {
+    alert("เลือกไฟล์ .pgm ก่อน");
+    return;
+  }
+
+  console.log("ชื่อไฟล์:", file.name);
+
+  const reader = new FileReader();
+  reader.readAsArrayBuffer(file);
+
+  reader.onload = () => {
+    const buf = new Uint8Array(reader.result);
+
+    let i = 0;
+    function readLine() {
+      let line = "";
+      while (i < buf.length && buf[i] !== 10) {
+        line += String.fromCharCode(buf[i++]);
+      }
+      i++;
+      return line.trim();
+    }
+
+    const magic = readLine();
+    if (magic !== "P5") {
+      alert("ไม่ใช่ไฟล์ PGM binary (P5)");
+      return;
+    }
+
+    let dimLine = readLine();
+    while (dimLine.startsWith("#")) dimLine = readLine();
+
+    const [width, height] = dimLine.split(" ").map(Number);
+    readLine(); // maxval
+
+    const pixels = buf.slice(i, i + width * height);
+    const binary = new Uint8Array(width * height);
+    for (let k = 0; k < pixels.length; k++) {
+      binary[k] = pixels[k] > 127 ? 255 : 0;
+    }
+
+    const ptr = wasm._malloc(binary.length);
+    wasm.HEAPU8.set(binary, ptr);
+
+    console.log("🚀 RUN PGM", width, height);
+    wasm.myrun(ptr, width, height);
+
+    const final = wasm.get_final();
+    console.log("FINAL =", final);
+
+    wasm._free(ptr);
   };
 }
 

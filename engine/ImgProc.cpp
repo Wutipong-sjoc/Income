@@ -1,4 +1,3 @@
-
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -40,9 +39,6 @@ void TemplateNumber();
 void Matching(std::vector<std::vector<int>> img);
 // ----------------------------------------------------------------------- //
 
-// int main()
-// {   
-
 extern "C" {
     void myrun(unsigned char* input, int width, int height) {
 
@@ -53,7 +49,12 @@ extern "C" {
         finalnum = 0;
         onetimecheck = true;
 
-        // ตั้งค่า
+        cc = 0;
+        ccc = 0;
+        FrontVal = 0;
+        BackVal = 0;
+        loopp = 0;
+
         w = width;
         h = height;
         maxv = 255;
@@ -61,35 +62,19 @@ extern "C" {
         data.clear();
         data.resize(w * h);
 
-        // copy data จาก JS
+        // std::cout << "DEBUG myrun start" << "\n";
+
         for (int i = 0; i < w * h; i++) {
             data[i] = input[i];
         }
 
+        templateNum.clear();
         TemplateNumber();
-        // std::ifstream f("/Users/wutipong/Desktop/Project/1-9/binary/7.pgm", std::ios::binary);
-        // std::ifstream f("/Users/wutipong/Desktop/Project/output7.pgm", std::ios::binary);
 
-        // std::string magic;
-
-        // // อ่าน header
-        // f >> magic >> w >> h >> maxv;
-        // f.get(); // Avoiding newline
-
-        // // อ่าน pixel
-        // data.resize(w * h);
         std::vector<int> sumzero;
-        // f.read((char *)data.data(), data.size());
-
-        // // แสดงข้อมูล
-        // std::cout << "W=" << w << " H=" << h << "\n";
-        // std::cout << "First 10 pixels:\n";
-
 
         //------------------Collecting low rows--------------------------------
-
-        // Collecting the values that have number of zero pixel between 50 to less than 50% of width.
-        valscr = w * 0.5; // 50% of width.
+        valscr = w * 0.5;
         for (int y = 0; y < h; y++)
         {
             int count = 0;
@@ -102,12 +87,10 @@ extern "C" {
             }
             if (count > 10 && count < valscr)
             {
-                // out << y << " " << count << "\n";
                 low.push_back(y);
             }
         }
 
-        // Finding sum of number of zero pixel in each column
         for (int y = 0; y < low.size(); y++)
         {
             for (int x = 0; x < w; x++)
@@ -120,7 +103,7 @@ extern "C" {
                         sumzero.push_back(0);
                     }
                     else
-                    { // Finding sum of number of zero pixel in each column
+                    {
                         sumzero.push_back(1);
                     }
                 }
@@ -139,15 +122,12 @@ extern "C" {
             }
         }
 
-        //---------------------------------------------------------------------
-
         //------------------Borderless image screening.------------------------
-        int samplesize = 30; // Number of samples
+        int samplesize = 30;
         float xbarF, xbarB;
         float currentval, cvF, cvB;
         float stddevF = 0, stddevB = 0;
 
-        // Front coefficient of variation(cvF) calculation
         xbarF = 0;
         for (int i = 0; i < samplesize; i++)
         {
@@ -170,7 +150,6 @@ extern "C" {
             cvF = 0;
         }
 
-        // Back coefficient of variation(cvB) calculation
         xbarB = 0;
         for (int i = sumzero.size() - 1; i > (sumzero.size() - samplesize - 1); i--)
         {
@@ -193,7 +172,6 @@ extern "C" {
             cvB = 0;
         }
 
-        // Finding FrontVal and BackVal
         FrontVal = 0;
         BackVal = 0;
         float sumval = 0;
@@ -205,7 +183,6 @@ extern "C" {
         {
             if (cvF == 0 && cvB == 0)
             {
-                // FrontVal
                 for (int i = 0; i < sumzero.size() - 1; i++)
                 {
                     if (sumzero[i] != 0)
@@ -214,7 +191,6 @@ extern "C" {
                         break;
                     }
                 }
-                // BackVal
                 for (int i = sumzero.size() - 1; i > 0; i--)
                 {
                     if (sumzero[i] != 0)
@@ -226,7 +202,6 @@ extern "C" {
             }
             else
             {
-                // FrontVal
                 for (int i = 0; i < sumzero.size() - 1; i++)
                 {
                     if (i < samplesize)
@@ -258,7 +233,6 @@ extern "C" {
                         }
                     }
                 }
-                // Backval
                 sumval = 0;
                 int counter = 1;
                 for (int i = sumzero.size() - 1; i > 0; i--)
@@ -298,7 +272,7 @@ extern "C" {
 
         if (FrontVal != 0 && BackVal != 0)
         {
-            std::vector<int>().swap(low); // clear the vector and set the capacity to 0
+            std::vector<int>().swap(low);
             for (int y = 0; y < h; y++)
             {
                 int count = 0;
@@ -311,23 +285,20 @@ extern "C" {
                 }
                 if (count > 50 && count < valscr)
                 {
-                    // out << y << " " << count << "\n";
                     low.push_back(y);
                 }
             }
         }
-
-        //--------------------------------------------------------------------
 
         std::vector<int>().swap(sumzero);
 
         if (low.empty()) return;
 
         int seq = low[0] - 1;
-        int count, firstY;
+        int count = 0, firstY = 0;
         bool cont = true;
         if (FrontVal == 0 && BackVal == 0)
-        { // When the image is borderless, we will process all columns.
+        {
             FrontVal = 0;
             BackVal = w - 1;
         }
@@ -346,12 +317,10 @@ extern "C" {
                         if (v == 255)
                         {
                             sumzero.push_back(0);
-                            // out << 1 << " ";
                         }
                         else
-                        { // Finding sum of number of zero pixel in each column
+                        {
                             sumzero.push_back(1);
-                            // out << v << " ";
                         }
                         count++;
                     }
@@ -361,37 +330,25 @@ extern "C" {
                         if (v == 255)
                         {
                             sumzero[count] += 0;
-                            // out << 1 << " ";
                         }
                         else
                         {
                             sumzero[count] += 1;
-                            // out << v << " ";
                         }
                         count++;
                     }
                 }
                 cont = false;
-                // out << "\n";
             }
             else
             {
-
                 if (low[y - 1] - low[firstY] >= 14)
                 {
-                    // if (loopp == 9)
-                    // {
-                        processdata(sumzero, low[firstY], low[y - 1]);
-                    // }
-                    // loopp++;
+                    processdata(sumzero, low[firstY], low[y - 1]);
                 }
-
-                // std::cout << "----------------------------------------" << "\n";
 
                 sumzero.clear();
                 cont = true;
-                // out << "\n";
-                // out << "\n";
 
                 for (int x = FrontVal; x <= BackVal; x++)
                 {
@@ -402,12 +359,10 @@ extern "C" {
                         if (v == 255)
                         {
                             sumzero.push_back(0);
-                            // out << 1 << " ";
                         }
                         else
-                        { // Finding sum of number of zero pixel in each column
+                        {
                             sumzero.push_back(1);
-                            // out << v << " ";
                         }
                         count++;
                     }
@@ -417,30 +372,19 @@ extern "C" {
                         if (v == 255)
                         {
                             sumzero[count] += 0;
-                            // out << 1 << " ";
                         }
                         else
                         {
                             sumzero[count] += 1;
-                            // out << v << " ";
                         }
                         count++;
                     }
                 }
                 cont = false;
-                // out << "\n";
             }
-            seq = low[y]; // collect old value to compare with next value.
+            seq = low[y];
         }
 
-
-        //--------------------result output--------------------------
-
-        // for (int i = 0; i < numberdetected.size(); i++)
-        // {
-        //     std::cout << numberdetected[i] << "\n";
-        // }
-        
         numberdetectedINT = nameToDigit(numberdetectedSTR);
         int power = -2;
         double prevnum = 0;
@@ -450,18 +394,17 @@ extern "C" {
             prevnum = 0;
         }
 
-        // std::cout << finalnum << "\n";
-        //---------------------End section---------------------
-        // Time stamp
         auto now = std::chrono::system_clock::now();
         std::time_t t = std::chrono::system_clock::to_time_t(now);
-        std::cout << "Program completed: " << std::put_time(std::localtime(&t), "%H:%M:%S") << "\n";
-        // Hist();
-        // printofile(w);
+        // std::cout << "Program completed: " << std::put_time(std::localtime(&t), "%H:%M:%S") << "\n";
+
+        // std::cout << "DEBUG finalnum in myrun = " << finalnum << "\n";
+
         return;
     }
     
     double get_final() {
+        // std::cout << "DEBUG get_final returning " << finalnum << "\n";
         return finalnum;
     }
 }
@@ -531,32 +474,10 @@ void printofile(int w)
 
 void processdata(std::vector<int> sumzero, int firstY, int lastY)
 {
-    // if (loopp == 6){
-    // //if (lastY - firstY >= 14){ //screening the image that has more than or equal to 14 rows. These rows should be noise.
-    //     //Output sumzero to output.txt
-    // for (int i = FrontVal; i <= BackVal; i++){
-    //     //out << sumzero[i] << "\n";
-    //     out << i << " " << sumzero[cc] << "\n";
-    //     cc++;
-    // }
-    // //}
-    // }
-    // loopp++;
-
-    // for (int y = firstY; y <= lastY; y++){
-    //     for(int x = FrontVal; x <= BackVal; x++){
-    //         int v = data[y * w + x];
-    //         if (v==255){
-    //             out << 1 << " ";
-    //         }
-    //         else{
-    //             out << 0 << " ";
-    //         }
-    //     }
-    //     out << "\n";
-    // }
-    // out << "\n";
-    // out << "\n";
+    // std::cout << "DEBUG processdata start firstY=" << firstY
+            //   << " lastY=" << lastY
+            //   << " sumzero.size=" << sumzero.size()
+            //   << std::endl;
 
     int count = 0;
     int count1 = 0;
@@ -575,33 +496,23 @@ void processdata(std::vector<int> sumzero, int firstY, int lastY)
     std::vector<int> newsum0;
 
     for (int i = FrontVal; i <= BackVal; i++){
-        // if (sumzero[countloop] != 0){
         if (sumzero[countloop] > 1){
             count++;
-            //Sreening the noise
             if (count < 3){
                 if (FirstVal == true){
                     FrontX = i;
                     FirstVal = false;
                 }
-
-                // if (sumzero[countloop+1] == 0){ 
                 if (sumzero[countloop+1] <= 1){ 
                     count = 0;
                     FirstVal = true;
                 }
-                // else if (sumzero[countloop+2] == 0){
                 else if (sumzero[countloop+2] <= 1){
                     count = 0;
                     FirstVal = true;
                 }
-                // else if (sumzero[countloop+3] == 0){
-                //     count = 0;
-                //     FirstVal = true;
-                // }
             }
             else if(count == 3){
-                // if (sumzero[countloop+1] == 0){ 
                 if (sumzero[countloop+1] <= 1){ 
                     count = 0;
                     FirstVal = true;
@@ -610,34 +521,24 @@ void processdata(std::vector<int> sumzero, int firstY, int lastY)
         }
 
         if (count > 3){
-
             if (MaxX < count){
                 MaxX = count;
             }
-            
-            // if (sumzero[countloop] == 0){
             if (sumzero[countloop] <= 1){
-                //std::cout << FrontX << "\n";
-                //std::cout << i-1 << "\n";
-                // std::cout << count << "\n";
                 ContCheck = true;
                 count = 0;
                 BackX = i - 1;
             }
         }
         if (ContCheck == true){
-            // if (sumzero[countloop] == 0){
             if (sumzero[countloop] <= 1){
                 countSpace++;
             }
-            // if (sumzero[countloop+1] != 0){
             if (sumzero[countloop+1] > 1){
-                // if (FirstCheck == false){
                 ContCheck = false;
                 spacing.push_back(countSpace);
                 FirstCheck = true;
                 countSpace = 0; 
-                // }
             }
             else if (countSpace > 20){
                 ContCheck = false;
@@ -670,41 +571,20 @@ void processdata(std::vector<int> sumzero, int firstY, int lastY)
         }
         countloop++;
     }
-    //------------------------------------------------------------------------------
-    // Judgement section!!
-    //Tempo({Front x(0), back x(1), front y(2), back y(3), number of space(4), Max X count(5)}) 
 
-    for (int i =0; i < tempo.size(); i++){
-        // if (FrontVal == tempo[i][0]){
-        //     tempo.erase(tempo.begin() + i);
-        // }
+    // std::cout << "DEBUG tempo.size before filter = " << tempo.size() << std::endl;
+
+    // ✅ แก้ fix 1: วน loop ถอยหลัง ป้องกัน erase ระหว่าง iterate
+    for (int i = tempo.size() - 1; i >= 0; i--){
         if (BackVal == tempo[i][1]){
             tempo.erase(tempo.begin() + i);
         }
-        else if (tempo[i][4] == 0){ //removing if no space.
+        else if (tempo[i][4] == 0){
             tempo.erase(tempo.begin() + i);
         }
-        // else if (tempo[i][5] > 50){
-        //     if (tempo.size() > 1){
-
-        //     }
-        //     tempo.erase(tempo.begin() + i);
-        // }
     }
 
-    // for (int z = tempo[0][2]; z <= tempo[0][3]; z++){
-    //     for(int r = tempo[0][0]; r <= tempo[0][1]; r++){
-    //         int v = data[z * w + r];
-    //         if (v==255){
-    //             out << 1 << " ";
-    //         }
-    //         else{
-    //             out << 0 << " ";
-    //         }
-    //     }
-    //     out << "\n";
-    // }
-    // out << "\n";
+    // std::cout << "DEBUG tempo.size after filter = " << tempo.size() << std::endl;
 
     ContCheck = false;
     if (tempo.size() != 0){
@@ -719,11 +599,6 @@ void processdata(std::vector<int> sumzero, int firstY, int lastY)
                         counting++;
                     }
                 }
-                // std::cout << counting << "\n";
-                // if (counting > 3){
-                // // if (counting != 0){
-                //     New.push_back(y);
-                // }
                 if (ContCheck == true)
                 {
                     if ((counting == 0) || (y == tempo[i][3]))
@@ -739,22 +614,6 @@ void processdata(std::vector<int> sumzero, int firstY, int lastY)
                         ContCheck = true;
                     }
                 }
-
-                // if (New.size() > 1){
-                //     for (int z = New[0]; z <= New[1]; z++){
-                //         for(int r = tempo[i][0]; r <= tempo[i][1]; r++){
-                //             int v = data[z * w + r];
-                //             if (v==255){
-                //                 out << 1 << " ";
-                //             }
-                //             else{
-                //                 out << 0 << " ";
-                //             }
-                //         }
-                //         out << "\n";
-                //     }
-                //     out << "\n";
-                // }
                 
                 if (New.size() > 1)
                 {
@@ -773,7 +632,7 @@ void processdata(std::vector<int> sumzero, int firstY, int lastY)
                                         newsum0.push_back(0);
                                     }
                                     else
-                                    { // Finding sum of number of zero pixel in each column
+                                    {
                                         newsum0.push_back(1);
                                     }
                                 }
@@ -813,48 +672,22 @@ void processdata(std::vector<int> sumzero, int firstY, int lastY)
                         TempoArrign.push_back({fn, ln, New[0], New[1]});
                     }
 
-                    // if (TempoArrign.size() != 0){
-                    //     for (int z = TempoArrign[i][2]; z <= TempoArrign[i][3]; z++){
-                    //         for(int r = TempoArrign[i][0]; r <= TempoArrign[i][1]; r++){
-                    //             int v = data[z * w + r];
-                    //             if (v==255){
-                    //                 out << 1 << " ";
-                    //             }
-                    //             else{
-                    //                 out << 0 << " ";
-                    //             }
-                    //         }
-                    //         out << "\n";
-                    //     }
-                    //     out << "\n";
-                    // }
-
                     std::vector<int>().swap(New);
                     std::vector<int>().swap(newsum0);
                 }
             }
-
-            // for (int lp = 0; lp < TempoArrign.size(); lp++){
-            //     for (int y = TempoArrign[lp][2]; y <= TempoArrign[lp][3]; y++){
-            //         for(int x = TempoArrign[lp][0]; x <= TempoArrign[lp][1]; x++){
-            //             int v = data[y * w + x];
-            //             if (v==255){
-            //                 out << 1 << " ";
-            //             }
-            //             else{
-            //                 out << 0 << " ";
-            //             }
-            //         }
-            //         out << "\n";
-            //     }
-            //     out << "\n";
-            // }
-
         }
+
+        // std::cout << "DEBUG TempoArrign.size = " << TempoArrign.size() << std::endl;
 
         std::vector<std::vector<int>>().swap(tempo);
         std::vector<int>().swap(newsum0);
         tempo = TempoArrign;
+
+        // std::cout << "DEBUG final tempo.size before matching stage = " << tempo.size() << std::endl;
+
+        // ✅ แก้ fix 2: toAdd ป้องกัน push_back ระหว่าง iterate
+        std::vector<std::vector<int>> toAdd;
 
         for (int i = 0; i < tempo.size(); i++){
             int firstloop = 0;
@@ -866,7 +699,7 @@ void processdata(std::vector<int> sumzero, int firstY, int lastY)
                         if (v==255){
                             New.push_back(0);
                         }
-                        else{ //Finding sum of number of zero pixel in each column
+                        else{
                             New.push_back(1);
                         }
                     }
@@ -887,31 +720,38 @@ void processdata(std::vector<int> sumzero, int firstY, int lastY)
             int counting = 0;
             int prv = 100000000;
             int sp = 0;
-            // if (i == 3){
-                for (int x = tempo[i][0]; x <= tempo[i][1]; x++){
-                    if (New[sp] == 0){
-                        counting++;
-                    }
-                    else{
-                        if (counting > 0){
-                            // std::cout << "----------------------------------------??????" << "\n";
-                            // std::cout << counting << "\n";
-                            // std::cout << "----------------------------------------??????" << "\n";
-                            if (counting > prv + 5){
-                                // std::cout << x << "\n";
-                                // prv = 100000000;
-                                int bkX = tempo[i][1];
-                                tempo[i][1] = x - counting - 1;
-                                tempo.push_back({x, bkX, tempo[i][2], tempo[i][3]});
-                                break;
-                            }
-                            prv = counting;
-                            counting = 0;
-                        }
-                    }
-                    // out << x << " " << New[sp] << "\n";
-                    sp++;
+            for (int x = tempo[i][0]; x <= tempo[i][1]; x++){
+                if (New[sp] == 0){
+                    counting++;
                 }
+                else{
+                    if (counting > 0){
+                        if (counting > prv + 5){
+                            int bkX = tempo[i][1];
+                            tempo[i][1] = x - counting - 1;
+                            toAdd.push_back({x, bkX, tempo[i][2], tempo[i][3]});
+                            // tempo.push_back({x, bkX, tempo[i][2], tempo[i][3]});  // ← push ตรงๆ ใน loop
+                            break;
+                        }
+                        prv = counting;
+                        counting = 0;
+                    }
+                }
+                sp++;
+            }
+
+            // if (tempo[i][2] == 1285 && tempo[i][3] == 1335) {
+            //     std::cout << "DEBUG TARGET tempo = "
+            //             << tempo[i][0] << " "
+            //             << tempo[i][1] << " "
+            //             << tempo[i][2] << " "
+            //             << tempo[i][3] << std::endl;
+
+            //     std::cout << "DEBUG TARGET New values = ";
+            //     for (int kk = 0; kk < New.size(); kk++) {
+            //         std::cout << New[kk] << " ";
+            //     }
+            //     std::cout << std::endl;
             // }
 
             std::vector<int> result;
@@ -919,19 +759,15 @@ void processdata(std::vector<int> sumzero, int firstY, int lastY)
             int cc2 = 0;
             bool checking = true;
             double countcal = 0;
-            // double prev = 1;
             double result1;
             double high = tempo[i][3]-tempo[i][2];
             for (int x = tempo[i][0]; x <= tempo[i][1]; x++){
-                //out << sumzero[i] << "\n";
-                //out << x << " " << New[cc] << "\n";
                 cc++;
                 if (high < 80){
                     if (New[cc] <= 1){
                         if (checking == false){
                             result.push_back((100 / high) * countcal);
                             result1 = (100 / high) * countcal;
-                            // std::cout << result1 << "\n";
                             countcal = 0;
                             checking = true;
                         }
@@ -944,34 +780,33 @@ void processdata(std::vector<int> sumzero, int firstY, int lastY)
                     }
                 }
             }
-            //std::cout << "----------------------------------------" << "\n";
+
+            // std::cout << "DEBUG result.size = " << result.size() << std::endl;
+            // if (!result.empty()) {
+            //     std::cout << "DEBUG result first = " << result[0]
+            //             << " last = " << result[result.size() - 1]
+            //             << std::endl;
+            // }
+
+            // std::cout << "DEBUG result.size = " << result.size() << std::endl;
+            // if (!result.empty()) {
+            //     std::cout << "DEBUG result values = ";
+            //     for (int k = 0; k < result.size(); k++) {
+            //         std::cout << result[k] << " ";
+            //     }
+            //     std::cout << std::endl;
+
+            //     std::cout << "DEBUG result last = " << result[result.size() - 1] << std::endl;
+            //     if (result.size() >= 3) {
+            //         std::cout << "DEBUG result size-3 = " << result[result.size() - 3] << std::endl;
+            //     }
+            // }
 
             if (onetimecheck == true){
                 if (result.size() > 3 && result.size() < 11){
                     if (result[result.size() - 1] > 45){
                         if (result[result.size() - 3] <= 22){
 
-                            // for (int z = tempo[i][2] + 1; z < tempo[i][3]; z++){
-                            //     for(int t = tempo[i][0]; t <= tempo[i][1]; t++){
-                            //         int v = data[z * w + t];
-                            //         if (v==255){
-                            //             out << 1 << " ";
-                            //         }
-                            //         else{
-                            //             out << 0 << " ";
-                            //         }
-                            //     }
-                            //     out << "\n";
-                            // }
-                            // out << "\n";
-                            // out << "\n";
-                            // for (int i = 0; i < result.size();i++){
-                            //     std::cout << result[i] << "\n";
-                            // }
-
-                            // ----------------------------End-----------------------------------
-
-                            //New sumzero for each column in the character box.
                             bool first = true;
                             for (int z = tempo[i][2] + 1; z < tempo[i][3]; z++){
                                 cc2 = 0;
@@ -998,10 +833,6 @@ void processdata(std::vector<int> sumzero, int firstY, int lastY)
                                 }
                                 first = false;
                             }
-                            // for (int ii = 0; ii < newsum0.size();ii++){
-                            //     // std::cout << newsum0[ii] << "\n";
-                            //     out << newsum0[ii] << "\n";
-                            // }
                             
                             std::vector<std::vector<int>> img(tempo[i][3]-(tempo[i][2] + 1));
                             int tempox = tempo[i][1];
@@ -1046,17 +877,11 @@ void processdata(std::vector<int> sumzero, int firstY, int lastY)
                                     if (avoiddot != 2){
                                         if (check0 == true){
                                             img = Resize(img,10,10);
-                                            
-                                            //------------------Debug--------------------------
-                                            // for (int zz = 0; zz < img.size(); zz++){
-                                            //     for (int tt = 0; tt < img[zz].size(); tt++){
-                                            //         out << img[zz][tt] << " ";
-                                            //     }
-                                            //     out << "\n";
-                                            // }
-                                            // out << "\n";
-                                            // out << "\n";
-                                            //-------------------------------------------------
+
+                                            // std::cout << "DEBUG about to call Matching, img.size = " << img.size()
+                                            //     << " x "
+                                            //     << (img.empty() ? 0 : img[0].size())
+                                            //     << std::endl;
 
                                             Matching(img);
 
@@ -1064,7 +889,6 @@ void processdata(std::vector<int> sumzero, int firstY, int lastY)
                                             check0 = false;
                                             std::vector<std::vector<int>>().swap(img);
                                             img.resize(tempo[i][3] - (tempo[i][2] + 1));
-                                            // break;
                                         }
                                     }
                                     if (check1 == true){
@@ -1082,6 +906,9 @@ void processdata(std::vector<int> sumzero, int firstY, int lastY)
             std::vector<int>().swap(New);
             std::vector<int>().swap(result);
         }
+
+        // ✅ แก้ fix 2: push toAdd หลัง loop จบ
+        for (auto& v : toAdd) tempo.push_back(v);
     }
 }
 
@@ -1098,7 +925,6 @@ std::vector<std::vector<int>> Resize(std::vector<std::vector<int>> img, int newW
         }
     }
     return resized;
-
 }
 
 void TemplateNumber(){
@@ -1270,7 +1096,6 @@ void Matching(std::vector<std::vector<int>> img){
 
         for (int y = 0; y < templateNum[i].data.size(); y++){
             for (int x = 0; x < templateNum[i].data[y].size(); x++){
-
                 if (img[y][x] == templateNum[i].data[y][x]){
                     countmatch++;
                 }
@@ -1285,16 +1110,14 @@ void Matching(std::vector<std::vector<int>> img){
 
     double similarity = (double)bestScore / 100.0;
 
+    // std::cout << "DEBUG similarity = " << similarity << "\n";
+
     if (similarity < 0.70){
-        // std::cout << "Detected: UNKNOWN" << std::endl;
         return;
     }
 
     std::string result = templateNum[bestIndex].name;
     numberdetectedSTR.push_back(result);
-
-    // std::cout << "Detected: " << result 
-    //           << " (" << similarity * 100 << "%)" << std::endl;
 }
 
 std::vector<int> nameToDigit(std::vector<std::string> num){
@@ -1336,52 +1159,3 @@ std::vector<int> nameToDigit(std::vector<std::string> num){
     
     return result;
 }
-
-// Output sumzero to output.txt
-//  for (int i = FrontVal; i <= BackVal; i++){
-//      //out << sumzero[i] << "\n";
-//      out << i << " " << sumzero[i] << "\n";
-//  }
-
-// for (unsigned char v : data) {
-//     std::cout << static_cast<int>(v) << " ";
-// }
-
-// for (int y = firstY; y <= lastY; y++){
-//     for(int x = FrontVal; x <= BackVal; x++){
-//         int v = data[y * w + x];
-//         if (v==255){
-//             out << 1 << " ";
-//         }
-//         else{
-//             out << 0 << " ";
-//         }
-//     }
-//     out << "\n";
-// }
-// out << "\n";
-// out << "\n";
-
-// void Matching(std::vector<std::vector<int>> img){
-//     int bestScore = -1;
-//     int bestIndex = -1;
-//     for (int i = 0; i < templateNum.size(); i++){
-//         int countmatch = 0;
-//         for (int y = 0; y < templateNum[i].data.size(); y++){
-//             for (int x = 0; x < templateNum[i].data[y].size(); x++){
-//                 if (img[y][x] == templateNum[i].data[y][x]){
-//                     countmatch++;
-//                 }
-//             }
-//         }
-//         if (countmatch > bestScore){
-//             bestScore = countmatch;
-//             bestIndex = i;
-//         }
-//     }
-//     if (bestIndex != -1){
-//         std::string result = templateNum[bestIndex].name;
-//         numberdetectedSTR.push_back(result);
-//         std::cout << "Detected: " << result << std::endl;
-//     }
-// }
