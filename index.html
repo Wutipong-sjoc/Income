@@ -28,17 +28,28 @@
     <div id="add" class="tab">
       <h1>➕ เพิ่มข้อมูล</h1>
 
+      <!-- upload -->
       <input type="file" id="imgInput" multiple>
       <button onclick="convert()">แปลง</button>
       <button onclick="convertdown()">Download</button>
+      <button onclick="saveData()">💾 Save</button>
 
-      <!-- ✅ กล่องแสดงผล -->
+      <!-- 📅 วันที่ -->
+      <div style="margin-top:15px;">
+        <label>วัน เดือน ปี:</label><br>
+        <input type="date" id="dateInput">
+      </div>
+
+      <!-- 🔥 slip rows -->
+      <div id="slipContainer" style="margin-top:20px;"></div>
+
+      <!-- log -->
       <textarea 
         id="outputBox" 
-        rows="12"
+        rows="8"
         style="
           width:100%;
-          margin-top:10px;
+          margin-top:15px;
           font-family:monospace;
           background:#111;
           color:#0f0;
@@ -57,7 +68,6 @@
   </div>
 </div>
 
-<!-- scripts -->
 <script src="engine_myrun.js"></script>
 <script src="main.js"></script>
 
