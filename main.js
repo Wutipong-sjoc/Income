@@ -197,6 +197,7 @@ window.saveData = async function () {
           product: item.product,
           cost: item.cost,
           userId: auth.currentUser.uid,
+          email: auth.currentUser.email
         }
       );
     }
