@@ -29,7 +29,7 @@ function log(msg) {
   }
 }
 
-// 🔥 สร้าง row
+// 🔥 สร้าง row (ราคา editable)
 function addRow(price, product) {
   const container = document.getElementById("slipContainer");
 
@@ -39,8 +39,9 @@ function addRow(price, product) {
   row.style.marginTop = "10px";
 
   row.innerHTML = `
-    <div class="price" style="flex:1; background:#1e5f7a; color:white; padding:10px;">
-      ราคา<br>${price}
+    <div style="flex:1; background:#1e5f7a; color:white; padding:10px;">
+      ราคา<br>
+      <input type="number" class="price" value="${price}" step="0.01">
     </div>
 
     <div style="flex:1; background:#1e5f7a; color:white; padding:10px;">
@@ -68,7 +69,7 @@ function getAllData() {
   let data = [];
 
   rows.forEach(row => {
-    const price = row.querySelector(".price").innerText.split("\n")[1];
+    const price = row.querySelector(".price").value;
     const product = row.querySelector(".product").value;
     const cost = row.querySelector(".cost").value;
 
@@ -173,7 +174,14 @@ function convert() {
   runNext();
 }
 
-// 🔥 download PGM (รูปเดียว)
+// 🔥 default วันที่เป็นวันนี้
+window.onload = function() {
+  const today = new Date().toISOString().split("T")[0];
+  const dateInput = document.getElementById("dateInput");
+  if (dateInput) dateInput.value = today;
+};
+
+// 🔥 download PGM
 function convertdown() {
   const file = document.getElementById("imgInput").files[0];
   if (!file) {
