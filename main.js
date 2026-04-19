@@ -211,67 +211,86 @@ window.saveData = async function () {
 
 // 🔥 convert
 window.convert = function () {
+  return new Promise((resolve) => {
 
-  document.getElementById("slipContainer").innerHTML = "";
+    document.getElementById("slipContainer").innerHTML = "";
 
-  if (!ready) return alert("WASM ยังไม่พร้อม");
+    if (!ready) {
+      alert("WASM ยังไม่พร้อม");
+      return resolve();
+    }
 
-  const files = document.getElementById("imgInput").files;
-  if (!files.length) return alert("เลือกรูปก่อน");
+    const files = document.getElementById("imgInput").files;
+    if (!files.length) {
+      alert("เลือกรูปก่อน");
+      return resolve();
+    }
 
-  let index = 0;
+    let index = 0;
 
-  function runNext() {
-    if (index >= files.length) return;
-
-    const file = files[index++];
-    const img = new Image();
-    img.src = URL.createObjectURL(file);
-
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
-
-      const { data } = ctx.getImageData(0, 0, img.width, img.height);
-
-      const binary = new Uint8Array(img.width * img.height);
-      let j = 0;
-
-      for (let i = 0; i < data.length; i += 4) {
-        const gray = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
-        binary[j++] = gray > 127 ? 255 : 0;
+    function runNext() {
+      if (index >= files.length) {
+        resolve(); // ✅ บอกว่าเสร็จแล้ว
+        return;
       }
 
-      const ptr = wasm._malloc(binary.length);
-      wasm.HEAPU8.set(binary, ptr);
+      const file = files[index++];
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
 
-      wasm.myrun(ptr, img.width, img.height);
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
 
-      const final = wasm.get_final();
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
 
-      let product = "กาแฟ";
-      if (final >= 0.1 && final < 0.2) product = "น้ำ";
-      else if (final >= 0.2) product = "ขนม";
+        const { data } = ctx.getImageData(0, 0, img.width, img.height);
 
-      addRow(final.toFixed(2), product, file.name);
+        const binary = new Uint8Array(img.width * img.height);
+        let j = 0;
 
-      wasm._free(ptr);
-      URL.revokeObjectURL(img.src);
+        for (let i = 0; i < data.length; i += 4) {
+          const gray = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+          binary[j++] = gray > 127 ? 255 : 0;
+        }
 
-      runNext();
-    };
-  }
-  runNext();
+        const ptr = wasm._malloc(binary.length);
+        wasm.HEAPU8.set(binary, ptr);
+
+        wasm.myrun(ptr, img.width, img.height);
+        const final = wasm.get_final();
+
+        let product = "กาแฟ";
+        if (final >= 0.1 && final < 0.2) product = "น้ำ";
+        else if (final >= 0.2) product = "ขนม";
+
+        addRow(final.toFixed(2), product, file.name);
+
+        wasm._free(ptr);
+        URL.revokeObjectURL(img.src);
+
+        runNext(); // 🔁 ไปตัวต่อไป
+      };
+    }
+
+    runNext();
+  });
 };
 
 // 🔥 default date
 window.onload = function() {
   const today = new Date().toISOString().split("T")[0];
   document.getElementById("dateInput").value = today;
+};
+
+window.processTwice = async function () {
+  console.log("RUN 1");
+  await convert();   
+
+  console.log("RUN 2");
+  await convert();   
 };
 
 // 🔥 download PGM
