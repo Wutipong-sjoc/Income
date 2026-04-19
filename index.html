@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Sidebar + WASM</title>
+  <title>Income</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,7 +13,17 @@
     <h2>เมนู</h2>
     <button onclick="openTab('home')">🏠 Home</button>
     <button onclick="openTab('add')">➕ เพิ่มข้อมูล</button>
-    <button onclick="openTab('login')">🔐 Login</button>
+    <!-- <button onclick="openTab('login')">🔐 Login</button> -->
+
+    <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
+      <div id="sidebarUser" style="font-size:12px;">
+        ❌ ยังไม่ login
+      </div>
+
+      <!-- <button onclick="login()">Login</button> -->
+       <button onclick="logout()">Logout</button>
+      <button id="loginBtn1" onclick="openTab('login')">🔐 Login</button>
+    </div>
   </div>
 
   <div class="content">
@@ -28,48 +38,42 @@
     <div id="add" class="tab">
       <h1>➕ เพิ่มข้อมูล</h1>
 
-      <!-- upload -->
       <input type="file" id="imgInput" multiple>
-      <button onclick="convert()">แปลง</button>
-      <button onclick="convertdown()">Download</button>
+      <button onclick="convert()">Process</button>
       <button onclick="saveData()">💾 Save</button>
 
-      <!-- 📅 วันที่ -->
+      <!-- วันที่ -->
       <div style="margin-top:15px;">
         <label>วัน เดือน ปี:</label><br>
         <input type="date" id="dateInput">
       </div>
 
-      <!-- 🔥 slip rows -->
+      <!-- ตาราง -->
       <div id="slipContainer" style="margin-top:20px;"></div>
 
-      <!-- log -->
-      <textarea 
-        id="outputBox" 
-        rows="8"
-        style="
-          width:100%;
-          margin-top:15px;
-          font-family:monospace;
-          background:#111;
-          color:#0f0;
-          padding:10px;
-        ">
-      </textarea>
     </div>
 
     <!-- LOGIN -->
     <div id="login" class="tab">
       <h1>🔐 Login</h1>
-      <input placeholder="Email"><br><br>
-      <input type="password" placeholder="Password">
+
+      <input id="email" placeholder="Email"><br><br>
+      <input id="password" type="password" placeholder="Password"><br><br>
+
+      <div style="display:flex; gap:10px;">
+        <button onclick="register()">Register</button>
+        <button onclick="login()">Login</button>
+        <button onclick="logout()">Logout</button>
+      </div>
+
+      <p id="userStatus"></p>
     </div>
 
   </div>
 </div>
 
 <script src="engine_myrun.js"></script>
-<script src="main.js"></script>
+<script type="module" src="main.js"></script>
 
 </body>
 </html>

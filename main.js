@@ -1,14 +1,110 @@
-function openTab(id) {
+// 🔥 Firebase import
+// 🔥 Firebase import
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+import { 
+  getFirestore, collection, addDoc 
+} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+
+import { 
+  getAuth, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+
+// 🔥 config
+const firebaseConfig = {
+  apiKey: "AIzaSyCgray3WkxNhzphkj-00tA_viq_1_tToPo",
+  authDomain: "income-e90fe.firebaseapp.com",
+  projectId: "income-e90fe",
+  storageBucket: "income-e90fe.firebasestorage.app",
+  messagingSenderId: "462986865238",
+  appId: "1:462986865238:web:3e9ac407ed2e2bb9f029f7"
+};
+
+// 🔥 init
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+// 🔥 UI helper
+function setUserStatus(text) {
+  const top = document.getElementById("userStatus");
+  const side = document.getElementById("sidebarUser");
+
+  if (top) top.innerText = text;
+  if (side) side.innerText = text;
+}
+
+// 🔥 Auth state
+onAuthStateChanged(auth, (user) => {
+  const loginBtn = document.querySelector('button[onclick="login()"]');
+  const logoutBtn = document.querySelector('button[onclick="logout()"]');
+
+  if (user) {
+    setUserStatus("👤 " + user.email);
+    if (loginBtn) loginBtn.style.display = "none";
+    if (logoutBtn) logoutBtn.style.display = "block";
+  } else {
+    setUserStatus("❌ ยังไม่ login");
+    if (loginBtn) loginBtn.style.display = "block";
+    if (logoutBtn) logoutBtn.style.display = "none";
+  }
+});
+
+// 🔥 Register
+window.register = async function () {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  try {
+    await createUserWithEmailAndPassword(auth, email, password);
+    alert("สมัครสำเร็จ");
+  } catch (e) {
+    alert(e.message);
+  }
+};
+
+// 🔥 Login
+window.login = async function () {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+
+    // ✅ เคลียร์ input
+    document.getElementById("email").value = "";
+    document.getElementById("password").value = "";
+
+    // ✅ ไปหน้า Home
+    openTab("home");
+
+  } catch (err) {
+    alert(err.message);
+  }
+};
+
+// 🔥 Logout
+window.logout = async function () {
+  await signOut(auth);
+  alert("logout แล้ว");
+};
+
+// 🔥 Tab
+window.openTab = function(id) {
   document.querySelectorAll(".tab").forEach(t => {
     t.classList.remove("active");
   });
   document.getElementById(id).classList.add("active");
-}
+};
 
+
+// 🔥 WASM
 let wasm = null;
 let ready = false;
 
-// โหลด WASM
 Engine().then(m => {
   console.log("WASM ready");
 
@@ -19,108 +115,115 @@ Engine().then(m => {
   ready = true;
 });
 
-// log ลง textarea
-function log(msg) {
-  console.log(msg);
-  const box = document.getElementById("outputBox");
-  if (box) {
-    box.value += msg + "\n";
-    box.scrollTop = box.scrollHeight;
-  }
-}
 
-// 🔥 สร้าง row (ราคา editable)
-function addRow(price, product) {
+// 🔥 add row
+function addRow(price, product, filename) {
   const container = document.getElementById("slipContainer");
 
-  const row = document.createElement("div");
-  row.style.display = "flex";
-  row.style.gap = "10px";
-  row.style.marginTop = "10px";
+  const wrapper = document.createElement("div");
+  wrapper.style.marginTop = "15px";
 
-  row.innerHTML = `
-    <div style="flex:1; background:#1e5f7a; color:white; padding:10px;">
-      ราคา<br>
-      <input type="number" class="price" value="${price}" step="0.01">
-    </div>
+  wrapper.innerHTML = `
+    <div style="display:flex; gap:8px;">
 
-    <div style="flex:1; background:#1e5f7a; color:white; padding:10px;">
-      สินค้า<br>
-      <select class="product">
-        <option ${product==="กาแฟ"?"selected":""}>กาแฟ</option>
-        <option ${product==="น้ำ"?"selected":""}>น้ำ</option>
-        <option ${product==="ขนม"?"selected":""}>ขนม</option>
-      </select>
-    </div>
+      <div style="flex:1; background:#1e5f7a; color:white; padding:10px; text-align:center;">
+        <div style="font-size:12px;">${filename}</div>
+        ราคา<br>
+        <input type="number" class="price" value="${price}" step="0.01">
+      </div>
 
-    <div style="flex:1; background:#1e5f7a; color:white; padding:10px;">
-      ต้นทุน<br>
-      <input type="number" class="cost" placeholder="ใส่ต้นทุน">
+      <div style="flex:1; background:#1e5f7a; color:white; padding:10px; text-align:center;">
+        สินค้า<br>
+        <select class="product">
+          <option ${product==="กาแฟ"?"selected":""}>กาแฟ</option>
+          <option ${product==="น้ำ"?"selected":""}>น้ำ</option>
+          <option ${product==="ขนม"?"selected":""}>ขนม</option>
+        </select>
+      </div>
+
+      <div style="flex:1; background:#1e5f7a; color:white; padding:10px; text-align:center;">
+        ต้นทุน<br>
+        <input type="number" class="cost" placeholder="ใส่ต้นทุน">
+      </div>
+
+      <button onclick="this.parentElement.parentElement.remove()">❌</button>
     </div>
   `;
 
-  container.appendChild(row);
+  container.appendChild(wrapper);
 }
 
-// 🔥 ดึงข้อมูลทั้งหมด
+// 🔥 get data
 function getAllData() {
   const rows = document.querySelectorAll("#slipContainer > div");
 
   let data = [];
 
   rows.forEach(row => {
-    const price = row.querySelector(".price").value;
-    const product = row.querySelector(".product").value;
-    const cost = row.querySelector(".cost").value;
+    const price = row.querySelector(".price")?.value || 0;
+    const product = row.querySelector(".product")?.value || "";
+    const cost = row.querySelector(".cost")?.value || 0;
 
     data.push({
-      date: document.getElementById("dateInput")?.value || "",
       price: Number(price),
       product: product,
-      cost: Number(cost || 0)
+      cost: Number(cost),
     });
   });
 
   return data;
 }
 
-// 🔥 save
-function saveData() {
+// 🔥 SAVE
+window.saveData = async function () {
+
+  if (!auth.currentUser) {
+    alert("กรุณา login ก่อน");
+    return;
+  }
+
   const data = getAllData();
-  console.log("DATA =", data);
-  alert("บันทึกแล้ว (ดู console)");
-}
+  const date = document.getElementById("dateInput").value;
 
-// 🔥 convert (หลายรูป)
-function convert() {
+  if (!date) return alert("เลือกวันที่ก่อน");
+  if (data.length === 0) return alert("ไม่มีข้อมูล");
 
-  // clear
-  const box = document.getElementById("outputBox");
-  if (box) box.value = "";
+  try {
+    for (let item of data) {
+      await addDoc(
+        collection(db, "slips", date, "items"),
+        {
+          price: item.price,
+          product: item.product,
+          cost: item.cost,
+          userId: auth.currentUser.uid,
+        }
+      );
+    }
+
+    alert("บันทึกสำเร็จ");
+  } catch (e) {
+    console.error(e);
+    alert("error: " + e.message);
+  }
+};
+
+// 🔥 convert
+window.convert = function () {
+
   document.getElementById("slipContainer").innerHTML = "";
 
-  if (!ready) {
-    alert("WASM ยังโหลดไม่เสร็จ");
-    return;
-  }
+  if (!ready) return alert("WASM ยังไม่พร้อม");
 
   const files = document.getElementById("imgInput").files;
-  if (!files.length) {
-    alert("เลือกรูปก่อน");
-    return;
-  }
+  if (!files.length) return alert("เลือกรูปก่อน");
 
   let index = 0;
 
   function runNext() {
-    if (index >= files.length) {
-      log("ทำครบทุกไฟล์แล้ว");
-      return;
-    }
+    if (index >= files.length) return;
 
     const file = files[index++];
-    log("ไฟล์: " + file.name);
-
     const img = new Image();
     img.src = URL.createObjectURL(file);
 
@@ -148,37 +251,26 @@ function convert() {
       wasm.myrun(ptr, img.width, img.height);
 
       const final = wasm.get_final();
-      log("ค่า = " + final);
 
-      // detect
       let product = "กาแฟ";
       if (final >= 0.1 && final < 0.2) product = "น้ำ";
       else if (final >= 0.2) product = "ขนม";
 
-      const price = (final).toFixed(2);
-
-      addRow(price, product);
+      addRow(final.toFixed(2), product, file.name);
 
       wasm._free(ptr);
       URL.revokeObjectURL(img.src);
 
       runNext();
     };
-
-    img.onerror = () => {
-      log("โหลดไม่ได้: " + file.name);
-      runNext();
-    };
   }
-
   runNext();
-}
+};
 
-// 🔥 default วันที่เป็นวันนี้
+// 🔥 default date
 window.onload = function() {
   const today = new Date().toISOString().split("T")[0];
-  const dateInput = document.getElementById("dateInput");
-  if (dateInput) dateInput.value = today;
+  document.getElementById("dateInput").value = today;
 };
 
 // 🔥 download PGM

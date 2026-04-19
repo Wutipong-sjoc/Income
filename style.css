@@ -3,30 +3,38 @@ body {
   font-family: sans-serif;
 }
 
+/* 🔥 layout ไม่ใช้ flex แนวนอนแล้ว */
 .layout {
-  display: flex;
-  height: 100vh;
+  display: block;
 }
 
+/* 🔥 navbar ด้านบน */
 .sidebar {
-  width: 220px;
+  width: 100%;
+  box-sizing: border-box;
   background: #222;
   color: white;
   padding: 15px;
+
+  display: flex;
+  align-items: center;
+  gap: 15px;
 }
 
+/* 🔥 ปุ่มเรียงแนวนอน */
 .sidebar button {
-  width: 100%;
-  margin-bottom: 10px;
-  padding: 10px;
+  width: auto;
+  padding: 10px 20px;
+  margin: 0;
   cursor: pointer;
 }
 
+/* 🔥 content อยู่ข้างล่าง */
 .content {
-  flex: 1;
   padding: 20px;
 }
 
+/* tab */
 .tab {
   display: none;
 }
