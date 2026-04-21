@@ -38,9 +38,13 @@ function setUserStatus(text) {
 }
 
 // 🔥 Auth state
+const ADMIN_EMAILS = ["wutipongg@gmail.com"]; // ← email admin here!
+
 onAuthStateChanged(auth, (user) => {
   const loginBtn = document.querySelector('button[onclick="login()"]');
   const logoutBtn = document.querySelector('button[onclick="logout()"]');
+
+  const isAdmin = user && ADMIN_EMAILS.includes(user.email);
 
   if (user) {
     setUserStatus("👤 " + user.email);
@@ -51,6 +55,15 @@ onAuthStateChanged(auth, (user) => {
     if (loginBtn) loginBtn.style.display = "block";
     if (logoutBtn) logoutBtn.style.display = "none";
   }
+
+  // Hide feature and show only admin!!
+  document.querySelectorAll('.admin-only').forEach(el => {
+    el.style.display = isAdmin ? 'block' : 'none';
+  });
+
+  // ซ่อนปุ่ม Manual ถ้าไม่ใช่ admin
+  const btnManual = document.getElementById('btnManual');
+  if (btnManual) btnManual.style.display = isAdmin ? '' : 'none';
 });
 
 // 🔥 Register
@@ -78,8 +91,8 @@ window.login = async function () {
     document.getElementById("email").value = "";
     document.getElementById("password").value = "";
 
-    // ✅ ไปหน้า Home
-    openTab("home");
+    // ✅ ไปหน้า Dashboard
+    openTab("Dashboard");
 
   } catch (err) {
     alert(err.message);
@@ -519,7 +532,7 @@ window.loadChartData = async function () {
 const _origOpenTab = window.openTab;
 window.openTab = function(id) {
   _origOpenTab(id);
-  if (id === "home") {
+  if (id === "Dashboard") {
     loadChartData();
   }
 };
@@ -567,3 +580,17 @@ function convertdown() {
     a.click();
   };
 }
+
+function saveModal() {
+  const price   = document.getElementById('popPrice').value;
+  const product = document.getElementById('popProduct').value;
+  const cost    = document.getElementById('popCost').value;
+
+  addRow(price, product, 'manual');         // เพิ่มแถวในตาราง
+  document.getElementById('myModal').style.display = 'none';
+
+  // เคลียร์ค่า
+  document.getElementById('popPrice').value = '';
+  document.getElementById('popCost').value  = '';
+}
+
