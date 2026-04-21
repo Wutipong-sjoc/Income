@@ -2,7 +2,7 @@
 // 🔥 Firebase import
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
 import { 
-  getFirestore, collection, addDoc 
+  getFirestore, collection, addDoc, getDocs 
 } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
 import { 
@@ -279,18 +279,192 @@ window.convert = function () {
   });
 };
 
-// 🔥 default date
-window.onload = function() {
-  const today = new Date().toISOString().split("T")[0];
-  document.getElementById("dateInput").value = today;
-};
-
 window.processTwice = async function () {
   console.log("RUN 1");
   await convert();   
 
   console.log("RUN 2");
   await convert();   
+};
+
+// 🔥 Chart instances (keep refs to destroy before redraw)
+let chartIncome = null;
+let chartProduct = null;
+let chartProfit = null;
+
+// 🔥 Set default date range
+window.onload = function() {
+  const today = new Date();
+  const from = new Date();
+  from.setDate(today.getDate() - 7);
+
+  document.getElementById("dateInput").value = today.toISOString().split("T")[0];
+  document.getElementById("chartFrom").value = from.toISOString().split("T")[0];
+  document.getElementById("chartTo").value = today.toISOString().split("T")[0];
+
+  // โหลด chart ทันทีโดยไม่ต้อง login
+  loadChartData();
+};
+
+// 🔥 Load chart data from Firestore
+window.loadChartData = async function () {
+  const from = document.getElementById("chartFrom").value;
+  const to = document.getElementById("chartTo").value;
+
+  if (!from || !to) {
+    document.getElementById("chartStatus").innerText = "⚠️ เลือกช่วงวันที่ก่อน";
+    return;
+  }
+
+  document.getElementById("chartStatus").innerText = "⏳ กำลังโหลด...";
+
+  // Generate all date strings in range
+  const dates = [];
+  let cur = new Date(from);
+  const end = new Date(to);
+  while (cur <= end) {
+    dates.push(cur.toISOString().split("T")[0]);
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  // Aggregate data per date
+  const daily = {}; // { date: { revenue, cost } }
+  const productMap = {}; // { productName: totalRevenue }
+
+  for (const date of dates) {
+    try {
+      const snapshot = await getDocs(collection(db, "slips", date, "items"));
+      if (!daily[date]) daily[date] = { revenue: 0, cost: 0 };
+
+      snapshot.forEach(doc => {
+        const d = doc.data();
+
+        const price = Number(d.price) || 0;
+        const cost = Number(d.cost) || 0;
+        const product = d.product || "อื่นๆ";
+
+        daily[date].revenue += price;
+        daily[date].cost += cost;
+
+        productMap[product] = (productMap[product] || 0) + price;
+      });
+    } catch (e) {
+      // date might not exist — skip
+    }
+  }
+
+  // Build chart arrays
+  const labels = dates;
+  const revenues = dates.map(d => daily[d]?.revenue || 0);
+  const costs = dates.map(d => daily[d]?.cost || 0);
+  const profits = dates.map(d => (daily[d]?.revenue || 0) - (daily[d]?.cost || 0));
+
+  const totalRevenue = revenues.reduce((a, b) => a + b, 0);
+  const totalCost = costs.reduce((a, b) => a + b, 0);
+  const totalProfit = totalRevenue - totalCost;
+
+  // Summary cards
+  document.getElementById("totalRevenue").innerText = totalRevenue.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  document.getElementById("totalCost").innerText = totalCost.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const profitEl = document.getElementById("totalProfit");
+  profitEl.innerText = totalProfit.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  profitEl.style.color = totalProfit >= 0 ? "#4ade80" : "#f87171";
+
+  document.getElementById("chartStatus").innerText = `✅ โหลดข้อมูล ${dates.length} วัน`;
+
+  // ── กรองเฉพาะวันที่มีข้อมูล ──
+  const activeDates    = dates.filter(d => (daily[d]?.revenue || 0) > 0 || (daily[d]?.cost || 0) > 0);
+  const activeRevenues = activeDates.map(d => daily[d]?.revenue || 0);
+  const activeCosts    = activeDates.map(d => daily[d]?.cost || 0);
+  const activeProfits  = activeDates.map(d => (daily[d]?.revenue || 0) - (daily[d]?.cost || 0));
+
+  // ── Mixed Bar + Line Chart ──
+  if (chartIncome) chartIncome.destroy();
+  chartIncome = new Chart(document.getElementById("incomeChart"), {
+    data: {
+      labels: activeDates,
+      datasets: [
+        { type:"bar",  label:"รายได้",      data:activeRevenues, backgroundColor:"rgba(30,95,122,0.75)",  borderRadius:4, yAxisID:"y",  order:2 },
+        { type:"bar",  label:"ต้นทุน",      data:activeCosts,    backgroundColor:"rgba(122,62,30,0.75)", borderRadius:4, yAxisID:"y",  order:2 },
+        { type:"bar",  label:"กำไร",        data:activeProfits,  backgroundColor:activeProfits.map(v=>v>=0?"rgba(30,122,74,0.75)":"rgba(200,50,50,0.75)"), borderRadius:4, yAxisID:"y", order:2 },
+        { type:"line", label:"เส้นรายได้",  data:activeRevenues, borderColor:"rgba(100,180,220,1)", backgroundColor:"transparent", tension:0.4, pointRadius:3, borderWidth:2, yAxisID:"y2", order:1 },
+        { type:"line", label:"เส้นต้นทุน",  data:activeCosts,    borderColor:"rgba(220,140,80,1)",  backgroundColor:"transparent", tension:0.4, pointRadius:3, borderWidth:2, yAxisID:"y2", order:1 },
+        { type:"line", label:"เส้นกำไร",    data:activeProfits,  borderColor:"rgba(80,220,140,1)",  backgroundColor:"transparent", tension:0.4, pointRadius:3, borderWidth:2, yAxisID:"y2", order:1 },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          labels: {
+            color: "#ccc", font: { size: 12 },
+            filter: (item) => !["เส้นรายได้","เส้นต้นทุน","เส้นกำไร"].includes(item.text),
+          },
+        },
+        tooltip: { mode:"index", intersect:false },
+      },
+      scales: {
+        x:  { ticks:{ color:"#888", maxTicksLimit:10 }, grid:{ color:"#222" } },
+        y:  { position:"left",  ticks:{ color:"#888" }, grid:{ color:"#222" } },
+        y2: { position:"right", ticks:{ color:"#555" }, grid:{ display:false } },
+      },
+    },
+  });
+
+  // ── Product Pie Chart ──
+  if (chartProduct) chartProduct.destroy();
+  const productLabels = Object.keys(productMap);
+  const productValues = Object.values(productMap);
+  const pieColors = ["#1e5f7a", "#7a3e1e", "#1e7a4a", "#7a6f1e", "#5a1e7a", "#1e3f7a"];
+
+  chartProduct = new Chart(document.getElementById("productChart"), {
+    type: "doughnut",
+    data: {
+      labels: productLabels,
+      datasets: [{
+        data: productValues,
+        backgroundColor: pieColors.slice(0, productLabels.length),
+        borderWidth: 2,
+        borderColor: "#111",
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: "#ccc", font: { size: 12 } } },
+      },
+    },
+  });
+
+  // ── Profit Pie Chart ──
+  if (chartProfit) chartProfit.destroy();
+  chartProfit = new Chart(document.getElementById("profitPieChart"), {
+    type: "doughnut",
+    data: {
+      labels: ["กำไร", "ต้นทุน"],
+      datasets: [{
+        data: [Math.max(totalProfit, 0), totalCost],
+        backgroundColor: ["#1e7a4a", "#7a3e1e"],
+        borderWidth: 2,
+        borderColor: "#111",
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: "#ccc", font: { size: 12 } } },
+      },
+    },
+  });
+};
+
+// 🔥 Auto-load chart when switching to home tab (if logged in)
+const _origOpenTab = window.openTab;
+window.openTab = function(id) {
+  _origOpenTab(id);
+  if (id === "home") {
+    loadChartData();
+  }
 };
 
 // 🔥 download PGM
