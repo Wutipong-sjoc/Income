@@ -289,6 +289,7 @@ window.processTwice = async function () {
 
 // 🔥 Chart instances (keep refs to destroy before redraw)
 let chartIncome = null;
+let chartQty = null;
 let chartProduct = null;
 let chartProfit = null;
 
@@ -328,13 +329,13 @@ window.loadChartData = async function () {
   }
 
   // Aggregate data per date
-  const daily = {}; // { date: { revenue, cost } }
+  const daily = {}; // { date: { revenue, cost, qty: {product: count} } }
   const productMap = {}; // { productName: totalRevenue }
 
   for (const date of dates) {
     try {
       const snapshot = await getDocs(collection(db, "slips", date, "items"));
-      if (!daily[date]) daily[date] = { revenue: 0, cost: 0 };
+      if (!daily[date]) daily[date] = { revenue: 0, cost: 0, qty: {} };
 
       snapshot.forEach(doc => {
         const d = doc.data();
@@ -345,6 +346,7 @@ window.loadChartData = async function () {
 
         daily[date].revenue += price;
         daily[date].cost += cost;
+        daily[date].qty[product] = (daily[date].qty[product] || 0) + 1;
 
         productMap[product] = (productMap[product] || 0) + price;
       });
@@ -453,6 +455,61 @@ window.loadChartData = async function () {
       responsive: true,
       plugins: {
         legend: { labels: { color: "#ccc", font: { size: 12 } } },
+      },
+    },
+  });
+
+  // ── Qty Chart (mixed bar+line) ──
+  // รวบรวมชื่อสินค้าทั้งหมด
+  const allProducts = [...new Set(
+    activeDates.flatMap(d => Object.keys(daily[d]?.qty || {}))
+  )];
+  const prodColors = ["#1e5f7a","#7a3e1e","#1e7a4a","#7a6f1e","#5a1e7a","#c0392b"];
+
+  const barDatasets = allProducts.map((prod, i) => ({
+    type: "bar",
+    label: prod,
+    data: activeDates.map(d => daily[d]?.qty[prod] || 0),
+    backgroundColor: prodColors[i % prodColors.length] + "cc",
+    borderRadius: 4,
+    yAxisID: "y",
+    order: 2,
+  }));
+
+  const lineDatasets = allProducts.map((prod, i) => ({
+    type: "line",
+    label: "เส้น" + prod,
+    data: activeDates.map(d => daily[d]?.qty[prod] || 0),
+    borderColor: prodColors[i % prodColors.length],
+    backgroundColor: "transparent",
+    tension: 0.4,
+    pointRadius: 3,
+    borderWidth: 2,
+    yAxisID: "y2",
+    order: 1,
+  }));
+
+  if (chartQty) chartQty.destroy();
+  chartQty = new Chart(document.getElementById("qtyChart"), {
+    data: {
+      labels: activeDates,
+      datasets: [...barDatasets, ...lineDatasets],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          labels: {
+            color: "#ccc", font: { size: 12 },
+            filter: (item) => !item.text.startsWith("เส้น"),
+          },
+        },
+        tooltip: { mode: "index", intersect: false },
+      },
+      scales: {
+        x:  { ticks: { color: "#888" }, grid: { color: "#222" } },
+        y:  { position: "left",  ticks: { color: "#888", stepSize: 1 }, grid: { color: "#222" } },
+        y2: { position: "right", ticks: { color: "#555", stepSize: 1 }, grid: { display: false } },
       },
     },
   });
