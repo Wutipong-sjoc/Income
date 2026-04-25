@@ -394,8 +394,10 @@ window.loadChartData = async function () {
   const activeProfits  = activeDates.map(d => (daily[d]?.revenue || 0) - (daily[d]?.cost || 0));
 
   // ── Mixed Bar + Line Chart ──
-  if (chartIncome) chartIncome.destroy();
-  chartIncome = new Chart(document.getElementById("incomeChart"), {
+  const incomeEl = document.getElementById("incomeChart");
+  const incomeExist = Chart.getChart(incomeEl);
+  if (incomeExist) incomeExist.destroy();
+  chartIncome = new Chart(incomeEl, {
     data: {
       labels: activeDates,
       datasets: [
@@ -427,50 +429,50 @@ window.loadChartData = async function () {
   });
 
   // ── Product Pie Chart ──
-  if (chartProduct) chartProduct.destroy();
-  const productLabels = Object.keys(productMap);
-  const productValues = Object.values(productMap);
-  const pieColors = ["#1e5f7a", "#7a3e1e", "#1e7a4a", "#7a6f1e", "#5a1e7a", "#1e3f7a"];
+  // if (chartProduct) chartProduct.destroy();
+  // const productLabels = Object.keys(productMap);
+  // const productValues = Object.values(productMap);
+  // const pieColors = ["#1e5f7a", "#7a3e1e", "#1e7a4a", "#7a6f1e", "#5a1e7a", "#1e3f7a"];
 
-  chartProduct = new Chart(document.getElementById("productChart"), {
-    type: "doughnut",
-    data: {
-      labels: productLabels,
-      datasets: [{
-        data: productValues,
-        backgroundColor: pieColors.slice(0, productLabels.length),
-        borderWidth: 2,
-        borderColor: "#111",
-      }],
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { labels: { color: "#ccc", font: { size: 12 } } },
-      },
-    },
-  });
+  // chartProduct = new Chart(document.getElementById("productChart"), {
+  // type: "doughnut",
+  // data: {
+  // labels: productLabels,
+  // datasets: [{
+  // data: productValues,
+  // backgroundColor: pieColors.slice(0, productLabels.length),
+  // borderWidth: 2,
+  // borderColor: "#111",
+  // }],
+  // },
+  // options: {
+  // responsive: true,
+  // plugins: {
+  // legend: { labels: { color: "#ccc", font: { size: 12 } } },
+  // },
+  // },
+  // });
 
   // ── Profit Pie Chart ──
-  if (chartProfit) chartProfit.destroy();
-  chartProfit = new Chart(document.getElementById("profitPieChart"), {
-    type: "doughnut",
-    data: {
-      labels: ["กำไร", "ต้นทุน"],
-      datasets: [{
-        data: [Math.max(totalProfit, 0), totalCost],
-        backgroundColor: ["#1e7a4a", "#7a3e1e"],
-        borderWidth: 2,
-        borderColor: "#111",
-      }],
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { labels: { color: "#ccc", font: { size: 12 } } },
-      },
-    },
-  });
+  // if (chartProfit) chartProfit.destroy();
+  // chartProfit = new Chart(document.getElementById("profitPieChart"), {
+  // type: "doughnut",
+  // data: {
+  // labels: ["กำไร", "ต้นทุน"],
+  // datasets: [{
+  // data: [Math.max(totalProfit, 0), totalCost],
+  // backgroundColor: ["#1e7a4a", "#7a3e1e"],
+  // borderWidth: 2,
+  // borderColor: "#111",
+  // }],
+  // },
+  // options: {
+  // responsive: true,
+  // plugins: {
+  // legend: { labels: { color: "#ccc", font: { size: 12 } } },
+  // },
+  // },
+  // });
 
   // ── Qty Chart (mixed bar+line) ──
   // รวบรวมชื่อสินค้าทั้งหมด
@@ -502,8 +504,10 @@ window.loadChartData = async function () {
     order: 1,
   }));
 
-  if (chartQty) chartQty.destroy();
-  chartQty = new Chart(document.getElementById("qtyChart"), {
+  const qtyEl = document.getElementById("qtyChart");
+  const qtyExist = Chart.getChart(qtyEl);
+  if (qtyExist) qtyExist.destroy();
+  chartQty = new Chart(qtyEl, {
     data: {
       labels: activeDates,
       datasets: [...barDatasets, ...lineDatasets],
@@ -593,4 +597,3 @@ function saveModal() {
   document.getElementById('popPrice').value = '';
   document.getElementById('popCost').value  = '';
 }
-
