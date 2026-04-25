@@ -147,11 +147,7 @@ function addRow(price, product, filename) {
 
       <div style="flex:1; background:#1e5f7a; color:white; padding:10px; text-align:center;">
         สินค้า<br>
-        <select class="product">
-          <option ${product==="กาแฟ"?"selected":""}>กาแฟ</option>
-          <option ${product==="น้ำ"?"selected":""}>น้ำ</option>
-          <option ${product==="ขนม"?"selected":""}>ขนม</option>
-        </select>
+        <select class="product"></select>
       </div>
 
       <div style="flex:1; background:#1e5f7a; color:white; padding:10px; text-align:center;">
@@ -164,6 +160,10 @@ function addRow(price, product, filename) {
   `;
 
   container.appendChild(wrapper);
+
+  // fill select จาก stockList
+  const select = wrapper.querySelector(".product");
+  fillSelect(select);
 }
 
 // 🔥 get data
@@ -303,10 +303,50 @@ window.processTwice = async function () {
 // 🔥 Chart instances (keep refs to destroy before redraw)
 let chartIncome = null;
 let chartQty = null;
+let chartMode = 'day';
+
+window.setChartMode = function(mode) {
+  chartMode = mode;
+  document.getElementById('btnDay').style.background   = mode === 'day'   ? '#1e5f7a' : '';
+  document.getElementById('btnDay').style.color        = mode === 'day'   ? 'white'   : '';
+  document.getElementById('btnMonth').style.background = mode === 'month' ? '#1e5f7a' : '';
+  document.getElementById('btnMonth').style.color      = mode === 'month' ? 'white'   : '';
+  loadChartData();
+};
 let chartProduct = null;
 let chartProfit = null;
 
 // 🔥 Set default date range
+// 🔥 Stock cache
+let stockList = [];
+
+async function loadStocks() {
+  const snapshot = await getDocs(collection(db, "stocks"));
+  stockList = [];
+  snapshot.forEach(doc => {
+    const d = doc.data();
+    stockList.push({ id: doc.id, name: doc.id.replace(/_/g, ' ') });
+  });
+  // fill Modal select ด้วย
+  fillSelect(document.getElementById("popProduct"));
+}
+
+function fillSelect(selectEl) {
+  if (!selectEl) return;
+  selectEl.innerHTML = "";
+  stockList.forEach(item => {
+    const opt = document.createElement("option");
+    opt.value = item.id;
+    opt.text  = item.name;
+    selectEl.appendChild(opt);
+  });
+}
+
+window.refreshStocks = async function() {
+  await loadStocks();
+  alert("โหลด stock ใหม่แล้ว ✅");
+};
+
 window.onload = function() {
   const today = new Date();
   const from = new Date();
@@ -316,7 +356,9 @@ window.onload = function() {
   document.getElementById("chartFrom").value = from.toISOString().split("T")[0];
   document.getElementById("chartTo").value = today.toISOString().split("T")[0];
 
-  // โหลด chart ทันทีโดยไม่ต้อง login
+  // โหลด stock ครั้งเดียว
+  loadStocks();
+  // โหลด chart
   loadChartData();
 };
 
@@ -388,10 +430,30 @@ window.loadChartData = async function () {
   document.getElementById("chartStatus").innerText = `✅ โหลดข้อมูล ${dates.length} วัน`;
 
   // ── กรองเฉพาะวันที่มีข้อมูล ──
-  const activeDates    = dates.filter(d => (daily[d]?.revenue || 0) > 0 || (daily[d]?.cost || 0) > 0);
-  const activeRevenues = activeDates.map(d => daily[d]?.revenue || 0);
-  const activeCosts    = activeDates.map(d => daily[d]?.cost || 0);
-  const activeProfits  = activeDates.map(d => (daily[d]?.revenue || 0) - (daily[d]?.cost || 0));
+  let activeDates    = dates.filter(d => (daily[d]?.revenue || 0) > 0 || (daily[d]?.cost || 0) > 0);
+  let activeRevenues = activeDates.map(d => daily[d]?.revenue || 0);
+  let activeCosts    = activeDates.map(d => daily[d]?.cost || 0);
+  let activeProfits  = activeDates.map(d => (daily[d]?.revenue || 0) - (daily[d]?.cost || 0));
+  let activeQtyMap   = activeDates.map(d => daily[d]?.qty || {});
+
+  // Group by month if mode = month
+  if (chartMode === 'month') {
+    const monthMap = {};
+    activeDates.forEach(d => {
+      const m = d.slice(0, 7);
+      if (!monthMap[m]) monthMap[m] = { revenue: 0, cost: 0, qty: {} };
+      monthMap[m].revenue += daily[d]?.revenue || 0;
+      monthMap[m].cost    += daily[d]?.cost || 0;
+      Object.entries(daily[d]?.qty || {}).forEach(([prod, cnt]) => {
+        monthMap[m].qty[prod] = (monthMap[m].qty[prod] || 0) + cnt;
+      });
+    });
+    activeDates    = Object.keys(monthMap).sort();
+    activeRevenues = activeDates.map(m => monthMap[m].revenue);
+    activeCosts    = activeDates.map(m => monthMap[m].cost);
+    activeProfits  = activeDates.map(m => monthMap[m].revenue - monthMap[m].cost);
+    activeQtyMap   = activeDates.map(m => monthMap[m].qty);
+  }
 
   // ── Mixed Bar + Line Chart ──
   const incomeEl = document.getElementById("incomeChart");
@@ -407,6 +469,7 @@ window.loadChartData = async function () {
         { type:"line", label:"เส้นรายได้",  data:activeRevenues, borderColor:"rgba(100,180,220,1)", backgroundColor:"transparent", tension:0.4, pointRadius:3, borderWidth:2, yAxisID:"y2", order:1 },
         { type:"line", label:"เส้นต้นทุน",  data:activeCosts,    borderColor:"rgba(220,140,80,1)",  backgroundColor:"transparent", tension:0.4, pointRadius:3, borderWidth:2, yAxisID:"y2", order:1 },
         { type:"line", label:"เส้นกำไร",    data:activeProfits,  borderColor:"rgba(80,220,140,1)",  backgroundColor:"transparent", tension:0.4, pointRadius:3, borderWidth:2, yAxisID:"y2", order:1 },
+        
       ],
     },
     options: {
@@ -418,7 +481,11 @@ window.loadChartData = async function () {
             filter: (item) => !["เส้นรายได้","เส้นต้นทุน","เส้นกำไร"].includes(item.text),
           },
         },
-        tooltip: { mode:"index", intersect:false },
+        tooltip: {
+          mode: "index",
+          intersect: false,
+          filter: (item) => ["รายได้", "ต้นทุน", "กำไร"].includes(item.dataset.label),
+        }
       },
       scales: {
         x:  { ticks:{ color:"#888", maxTicksLimit:10 }, grid:{ color:"#222" } },
@@ -433,7 +500,6 @@ window.loadChartData = async function () {
   // const productLabels = Object.keys(productMap);
   // const productValues = Object.values(productMap);
   // const pieColors = ["#1e5f7a", "#7a3e1e", "#1e7a4a", "#7a6f1e", "#5a1e7a", "#1e3f7a"];
-
   // chartProduct = new Chart(document.getElementById("productChart"), {
   // type: "doughnut",
   // data: {
@@ -477,14 +543,14 @@ window.loadChartData = async function () {
   // ── Qty Chart (mixed bar+line) ──
   // รวบรวมชื่อสินค้าทั้งหมด
   const allProducts = [...new Set(
-    activeDates.flatMap(d => Object.keys(daily[d]?.qty || {}))
+    activeQtyMap.flatMap(q => Object.keys(q))
   )];
   const prodColors = ["#1e5f7a","#7a3e1e","#1e7a4a","#7a6f1e","#5a1e7a","#c0392b"];
 
   const barDatasets = allProducts.map((prod, i) => ({
     type: "bar",
     label: prod,
-    data: activeDates.map(d => daily[d]?.qty[prod] || 0),
+    data: activeQtyMap.map(q => q[prod] || 0),
     backgroundColor: prodColors[i % prodColors.length] + "cc",
     borderRadius: 4,
     yAxisID: "y",
@@ -494,7 +560,7 @@ window.loadChartData = async function () {
   const lineDatasets = allProducts.map((prod, i) => ({
     type: "line",
     label: "เส้น" + prod,
-    data: activeDates.map(d => daily[d]?.qty[prod] || 0),
+    data: activeQtyMap.map(q => q[prod] || 0),
     borderColor: prodColors[i % prodColors.length],
     backgroundColor: "transparent",
     tension: 0.4,
@@ -518,7 +584,7 @@ window.loadChartData = async function () {
         legend: {
           labels: {
             color: "#ccc", font: { size: 12 },
-            filter: (item) => !item.text.startsWith("เส้น"),
+            // filter: (item) => !item.text.startsWith("เส้น"),
           },
         },
         tooltip: { mode: "index", intersect: false },
@@ -584,6 +650,23 @@ function convertdown() {
     a.click();
   };
 }
+
+// 🔥 Load stock options from Firestore
+window.loadStockOptions = async function() {
+  const select = document.getElementById("popProduct");
+  select.innerHTML = "<option>กำลังโหลด...</option>";
+
+  const snapshot = await getDocs(collection(db, "stocks"));
+  select.innerHTML = "";
+
+  snapshot.forEach(doc => {
+    const d = doc.data();
+    const option = document.createElement("option");
+    option.value = doc.id;
+    option.text  = doc.id.replace(/_/g, ' ');
+    select.appendChild(option);
+  });
+};
 
 function saveModal() {
   const price   = document.getElementById('popPrice').value;

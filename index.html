@@ -59,6 +59,8 @@
         <span>—</span>
         <input type="date" id="chartTo">
         <button onclick="loadChartData()">🔍 โหลด</button>
+        <button id="btnDay" onclick="setChartMode('day')" style="background:#1e5f7a; color:white;">📅 รายวัน</button>
+        <button id="btnMonth" onclick="setChartMode('month')">🗓️ รายเดือน</button>
       </div>
 
       <!-- Bar Chart -->
@@ -86,6 +88,7 @@
           <canvas id="profitPieChart"></canvas>
         </div>
       </div> -->
+    
     </div>
 
     <!-- ADD -->
@@ -93,10 +96,10 @@
       <h1>➕ เพิ่มข้อมูล</h1>
 
       <input type="file" id="imgInput" multiple>
-      <!-- <button onclick="convert()">Process</button> -->
       <button onclick="processTwice()">📑 Process</button>
       <button onclick="saveData()">💾 Save</button>
       <button id="btnManual" onclick="document.getElementById('myModal').style.display='flex'">🙌 Manual</button>
+      <button onclick="refreshStocks()">🔄 Refresh Stock</button>
 
       <!-- วันที่ -->
       <div style="margin-top:15px;">
@@ -114,9 +117,7 @@
 
           <input type="number" id="popPrice" placeholder="ราคา" style="width:100%; margin-bottom:10px;"><br>
           <select id="popProduct" style="width:100%; margin-bottom:10px;">
-            <option>กาแฟ</option>
-            <option>น้ำ</option>
-            <option>ขนม</option>
+            <option>กำลังโหลด...</option>
           </select><br>
           <input type="number" id="popCost" placeholder="ต้นทุน" style="width:100%; margin-bottom:16px;">
 
@@ -148,6 +149,7 @@
   </div>
 </div>
 
+<!-- <script src="node_modules/chart.js/dist/chart.umd.js"></script> -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="engine_myrun.js"></script>
 <script type="module" src="main.js"></script>
