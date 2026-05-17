@@ -11,31 +11,25 @@
 <div class="layout">
 
   <div class="sidebar">
-    <h2>Menu</Menu></h2>
+    <h2>Menu</h2>
     <button onclick="openTab('Dashboard')">📍 Dashboard</button>
     <button onclick="openTab('add')">➕ เพิ่มข้อมูล</button>
-    <!-- <button onclick="openTab('StockDetails')">📉 Stock Details</button> -->
     <button id="btnStockDetails" onclick="openTab('StockDetails')">📉 Stock Details</button>
-    <!-- <button onclick="openTab('login')">🔐 Login</button> -->
 
     <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
       <div id="sidebarUser" style="font-size:12px;">
-        ❌ ยังไม่ login
+        ❌ ยังไม่ได้ login
       </div>
-
-      <!-- <button onclick="login()">Login</button> -->
-       <button onclick="logout()">Logout</button>
+      <button onclick="logout()">Logout</button>
       <button id="loginBtn1" onclick="openTab('login')">🔐 Login</button>
     </div>
   </div>
 
   <div class="content">
 
-    <!-- Dashboard -->
     <div id="Dashboard" class="tab active">
       <h1>📍 Dashboard</h1>
 
-      <!-- Dashboard Summary -->
       <div id="summaryCards" style="display:flex; gap:16px; flex-wrap:wrap; margin-top:20px;">
         <div class="summary-card" style="background:#1e5f7a; color:white; padding:16px 24px; border-radius:10px; min-width:140px; text-align:center;">
           <div style="font-size:13px; opacity:0.8;">รายได้รวม</div>
@@ -54,7 +48,6 @@
         </div>
       </div>
 
-      <!-- Chart Controls -->
       <div style="margin-top:24px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
         <label style="font-size:13px;">ช่วงวันที่:</label>
         <input type="date" id="chartFrom">
@@ -65,7 +58,6 @@
         <button id="btnMonth" onclick="setChartMode('month')">🗓️ รายเดือน</button>
       </div>
 
-      <!-- Bar Chart -->
       <div style="margin-top:24px; background:#111; border-radius:12px; padding:20px;">
         <h3 style="color:#aaa; margin:0 0 16px 0; font-size:14px;">📊 รายได้ / ต้นทุน / กำไร รายวัน</h3>
         <canvas id="incomeChart" height="100"></canvas>
@@ -73,27 +65,12 @@
 
       <div id="chartStatus" style="margin-top:12px; color:#888; font-size:13px;"></div>
 
-      <!-- Qty Chart -->
       <div style="margin-top:24px; background:#111; border-radius:12px; padding:20px;">
         <h3 style="color:#aaa; margin:0 0 16px 0; font-size:14px;">📦 จำนวนสินค้าที่ขายได้ รายวัน</h3>
         <canvas id="qtyChart" height="100"></canvas>
       </div>
-
-      <!-- Pie Chart -->
-      <!-- <div style="display:flex; gap:20px; margin-top:20px; flex-wrap:wrap;">
-        <div style="flex:1; min-width:220px; background:#111; border-radius:12px; padding:20px;">
-          <h3 style="color:#aaa; margin:0 0 16px 0; font-size:14px;">🍩 สัดส่วนสินค้า (รายได้)</h3>
-          <canvas id="productChart"></canvas>
-        </div>
-        <div style="flex:1; min-width:220px; background:#111; border-radius:12px; padding:20px;">
-          <h3 style="color:#aaa; margin:0 0 16px 0; font-size:14px;">📈 กำไร / ต้นทุน</h3>
-          <canvas id="profitPieChart"></canvas>
-        </div>
-      </div> -->
-    
     </div>
 
-    <!-- ADD -->
     <div id="add" class="tab">
       <h1>➕ เพิ่มข้อมูล</h1>
 
@@ -102,28 +79,25 @@
       <button onclick="saveData()" style="background:#1e7a4a; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px;">💾 Save</button>
       <button onclick="clearAllSlips()" style="background:#8b1e3f; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px;">🗑 Clear all</button>
       <button id="btnManual" onclick="document.getElementById('myModal').style.display='flex'" style="background:#7a6f1e; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px;">🙌 Manual</button>
-      <!-- <button onclick="refreshStocks()" style="background:#333; color:#aaa; border:1px solid #555; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px;">🔄 Refresh Stock</button> -->
 
-      <!-- วันที่ -->
       <div style="margin-top:15px;">
         <label>วัน เดือน ปี:</label><br>
         <input type="date" id="dateInput">
       </div>
 
-      <!-- ต้นทุนกลาง โผล่หลัง process -->
-      <div id="globalCostDiv" style="display:flex; margin-top:12px; align-items:center; gap:12px;">
-        <label style="font-size:16px; color:#aaa; font-weight:bold;">💰 ต้นทุน (ทุกบิล):</label>
-        <input type="number" id="globalCost" placeholder="ใส่ต้นทุน"
-          style="padding:10px 16px; border-radius:8px; background:#1a3a4a; border:1px solid #2a5f7a; color:white; font-size:16px; width:200px;">
+      <div id="globalCostDiv" style="margin-top:12px;">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+          <label style="font-size:16px; color:#aaa; font-weight:bold;">💰 ต้นทุน (ทุกบิล):</label>
+          <button onclick="addCostRow()" style="background:#5f6368; color:white; border:1px solid #4b4f54; padding:10px 22px; border-radius:10px; cursor:pointer; font-size:16px; font-weight:700; min-width:92px; box-shadow:0 2px 8px rgba(0,0,0,0.12);">เพิ่ม</button>
+        </div>
+        <div id="costRows" style="display:flex; flex-direction:column; gap:12px;"></div>
       </div>
 
-      <!-- ตาราง -->
       <div id="slipContainer" style="margin-top:20px;"></div>
 
-      <!-- Modal -->
       <div id="myModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:999;">
         <div style="background:#1a1a1a; padding:24px; border-radius:12px; min-width:300px;">
-          <h3 style="margin:0 0 16px; color:white;">เพิ่มข้อมูล (Not ready‼️‼️) </h3>
+          <h3 style="margin:0 0 16px; color:white;">เพิ่มข้อมูล Manual</h3>
 
           <input type="number" id="popPrice" placeholder="ราคา" style="width:100%; margin-bottom:10px;"><br>
           <select id="popProduct" style="width:100%; margin-bottom:10px;">
@@ -137,10 +111,8 @@
           </div>
         </div>
       </div>
-
     </div>
 
-    <!-- LOGIN -->
     <div id="login" class="tab">
       <h1>🔐 Login</h1>
 
@@ -158,7 +130,7 @@
 
     <div id="StockDetails" class="tab">
       <h1>📉 Stock Details</h1>
-      <p style="color:#888; font-size:13px; margin-top:8px;">แก้ไขข้อมูลแล้วกด 💾 Update เพื่อบันทึก</p>
+      <p style="color:#888; font-size:13px; margin-top:8px;">แก้ไขข้อมูล stock แล้วกด 💾 Update เพื่อบันทึก</p>
       <div id="stockTableContainer" style="margin-top:20px;">
         <p style="color:#aaa;">กำลังโหลด...</p>
       </div>
@@ -167,7 +139,6 @@
   </div>
 </div>
 
-<!-- <script src="node_modules/chart.js/dist/chart.umd.js"></script> -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="engine_myrun.js"></script>
 <script type="module" src="main.js"></script>

@@ -143,18 +143,18 @@ function addRow(price, product, filename) {
   const slipId = "slip_" + Date.now();
   const wrapper = document.createElement("div");
   wrapper.dataset.slip = slipId;
-  wrapper.style.cssText = "margin-top:16px; border:1px solid #1e5f7a; border-radius:10px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.3);";
+  wrapper.style.cssText = "margin-top:16px; border:1px solid #d6d9de; border-radius:14px; overflow:hidden; box-shadow:0 10px 24px rgba(15, 23, 42, 0.08); background:#f8f9fb;";
 
   wrapper.innerHTML = `
-    <div style="background:#0d3a50; color:#7ecfef; font-size:12px; padding:8px 14px; display:flex; justify-content:space-between; align-items:center;">
+    <div style="background:#4b5563; color:#f9fafb; font-size:12px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center;">
       <span>📄 ${filename}</span>
-      <button onclick="addItemToSlip('${slipId}')" style="background:#1e7a4a; color:white; border:none; padding:5px 12px; border-radius:6px; cursor:pointer; font-size:12px;">➕ เพิ่มสินค้า</button>
+      <button onclick="addItemToSlip('${slipId}')" style="background:#6b7280; color:white; border:1px solid #565c67; padding:6px 14px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:700;">➕ เพิ่มสินค้า</button>
     </div>
     <!-- ราคาอยู่บนสุด -->
-    <div class="slip-price-row" style="display:flex; gap:8px; padding:8px 8px 0 8px; background:#1a2a35;">
-      <div style="flex:1; background:#1e5f7a; color:white; padding:10px; text-align:center; border-radius:6px;">
+    <div class="slip-price-row" style="display:flex; gap:10px; padding:10px 10px 0 10px; background:#f8f9fb;">
+      <div style="flex:1; background:#eceff3; color:#374151; padding:12px; text-align:center; border-radius:12px; border:1px solid #d7dbe2; font-weight:700;">
         ราคา<br>
-        <input type="number" class="bill-price" step="0.01" style="width:90%; margin-top:4px;" oninput="autoMatchBill(this)">
+        <input type="number" class="bill-price" step="0.01" style="width:90%; margin-top:6px; height:40px; border-radius:10px; border:1px solid #d1d5db; background:#ffffff; padding:0 12px; color:#2f3437; box-sizing:border-box;" oninput="autoMatchBill(this)">
       </div>
     </div>
     <div class="slip-items"></div>
@@ -195,19 +195,19 @@ window.addItemToSlip = function(slipId) {
 
   const itemsContainer = wrapper.querySelector(".slip-items");
   const row = document.createElement("div");
-  row.style.cssText = "display:flex; gap:8px; padding:8px; background:#1a2a35; border-top:1px solid #2a4a5a;";
+  row.style.cssText = "display:flex; gap:10px; padding:10px; background:#f8f9fb; border-top:1px solid #e3e6eb;";
 
   row.innerHTML = `
-    <div style="flex:1.5; background:#1e5f7a; color:white; padding:10px; text-align:center; border-radius:6px;">
+    <div style="flex:1.5; background:#eceff3; color:#374151; padding:12px; text-align:center; border-radius:12px; border:1px solid #d7dbe2; font-weight:700;">
       สินค้า<br>
-      <select class="product" style="width:90%; margin-top:4px;"></select>
+      <select class="product" style="width:90%; margin-top:6px; height:40px; border-radius:10px; border:1px solid #d1d5db; background:#ffffff; padding:0 12px; color:#2f3437; box-sizing:border-box;"></select>
     </div>
-    <div style="flex:0.6; background:#1e5f7a; color:white; padding:10px; text-align:center; border-radius:6px;">
+    <div style="flex:0.6; background:#eceff3; color:#374151; padding:12px; text-align:center; border-radius:12px; border:1px solid #d7dbe2; font-weight:700;">
       จำนวน<br>
-      <input type="number" class="qty" value="1" min="1" style="width:90%; margin-top:4px;">
+      <input type="number" class="qty" value="1" min="1" style="width:90%; margin-top:6px; height:40px; border-radius:10px; border:1px solid #d1d5db; background:#ffffff; padding:0 12px; color:#2f3437; box-sizing:border-box;">
     </div>
     <button onclick="removeItem(this)"
-      style="align-self:center; background:transparent; border:none; color:#f87171; font-size:18px; cursor:pointer;">❌</button>
+      style="align-self:center; background:#f3f4f6; border:1px solid #d1d5db; color:#8b1e1e; width:42px; height:42px; border-radius:10px; font-size:22px; cursor:pointer;">x</button>
   `;
 
   itemsContainer.appendChild(row);
@@ -230,9 +230,7 @@ window.removeItem = function(button) {
 window.clearAllSlips = function() {
   const slipContainer = document.getElementById("slipContainer");
   if (slipContainer) slipContainer.innerHTML = "";
-
-  const costInput = document.getElementById("globalCost");
-  if (costInput) costInput.value = "";
+  clearCostRows();
 
   const fileInput = document.getElementById("imgInput");
   if (fileInput) fileInput.value = "";
@@ -242,6 +240,72 @@ window.clearAllSlips = function() {
   if (popPrice) popPrice.value = "";
   if (popCost) popCost.value = "";
 };
+
+const COST_ITEM_OPTIONS = [
+  "packaging",
+  "ค่าส่ง",
+  "ถุงซิบล็อค",
+  "อื่นๆ"
+];
+
+function createCostOptions(selected = "packaging") {
+  return COST_ITEM_OPTIONS.map(item =>
+    `<option value="${item}" ${item === selected ? "selected" : ""}>${item}</option>`
+  ).join("");
+}
+
+window.addCostRow = function(type = "packaging", amount = "") {
+  const container = document.getElementById("costRows");
+  if (!container) return;
+
+  const row = document.createElement("div");
+  row.className = "cost-row";
+  row.style.cssText = "display:flex; gap:14px; align-items:center; flex-wrap:wrap;";
+
+  row.innerHTML = `
+    <select class="cost-type" style="background:#6b7280; color:white; border:1px solid #565c67; padding:0 14px; width:180px; height:44px; border-radius:10px; font-size:15px; font-weight:600; box-sizing:border-box; box-shadow:0 2px 8px rgba(0,0,0,0.10);">
+      ${createCostOptions(type)}
+    </select>
+    <input type="number" class="cost-amount" placeholder="ใส่ต้นทุน" value="${amount}"
+      style="background:#f3f4f6; color:#2f3437; border:1px solid #d1d5db; padding:0 14px; width:180px; height:44px; border-radius:10px; font-size:15px; font-weight:600; box-sizing:border-box; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+    <button onclick="removeCostRow(this)" aria-label="ลบต้นทุนรายการนี้" style="background:#f3f4f6; color:#8b1e1e; border:1px solid #d1d5db; width:44px; height:44px; border-radius:10px; cursor:pointer; font-size:22px; font-weight:700; line-height:1;">x</button>
+  `;
+
+  container.appendChild(row);
+};
+
+window.removeCostRow = function(button) {
+  const row = button?.closest(".cost-row");
+  if (!row) return;
+
+  const container = row.parentElement;
+  row.remove();
+
+  if (container && container.children.length === 0) {
+    addCostRow();
+  }
+};
+
+function clearCostRows() {
+  const container = document.getElementById("costRows");
+  if (!container) return;
+  container.innerHTML = "";
+  addCostRow();
+}
+
+function getGlobalCostTotal() {
+  return Array.from(document.querySelectorAll(".cost-amount"))
+    .reduce((sum, input) => sum + (Number(input.value) || 0), 0);
+}
+
+function getCostBreakdown() {
+  return Array.from(document.querySelectorAll(".cost-row"))
+    .map(row => ({
+      type: row.querySelector(".cost-type")?.value || "packaging",
+      amount: Number(row.querySelector(".cost-amount")?.value || 0)
+    }))
+    .filter(item => item.amount > 0);
+}
 
 // auto-match สินค้าจากราคา
 window.autoMatchProduct = function(priceInput) {
@@ -272,7 +336,6 @@ window.autoFillCost = function(selectEl) {
 // 🔥 get data
 function getAllData() {
   const rows = document.querySelectorAll("#slipContainer .slip-items > div");
-  const globalCost = Number(document.getElementById("globalCost")?.value || 0);
   let data = [];
   rows.forEach(row => {
     const slip    = row.closest("[data-slip]");
@@ -379,8 +442,9 @@ window.saveData = async function () {
     }
 
     // ✅ save globalCost แยกใน slips/{date} (overwrite ทุกครั้ง)
-    const globalCost = Number(document.getElementById("globalCost")?.value || 0);
-    await setDoc(doc(db, "slips", date), { globalCost }, { merge: true });
+    const globalCost = getGlobalCostTotal();
+    const costBreakdown = getCostBreakdown();
+    await setDoc(doc(db, "slips", date), { globalCost, costBreakdown }, { merge: true });
 
     alert("บันทึกสำเร็จ");
   } catch (e) {
@@ -465,8 +529,7 @@ window.convert = function () {
 window.processTwice = async function () {
   // ล้าง UI ก่อน process
   document.getElementById("slipContainer").innerHTML = "";
-  const costInput = document.getElementById("globalCost");
-  if (costInput) costInput.value = "";
+  clearCostRows();
 
   console.log("RUN 1");
   await convert();
@@ -718,6 +781,7 @@ window.onload = function() {
   document.getElementById("dateInput").value = today.toISOString().split("T")[0];
   document.getElementById("chartFrom").value = from.toISOString().split("T")[0];
   document.getElementById("chartTo").value = today.toISOString().split("T")[0];
+  clearCostRows();
 
   // โหลด stock ครั้งเดียว
   loadStocks();
