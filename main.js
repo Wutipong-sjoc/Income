@@ -2,7 +2,7 @@
 // 🔥 Firebase import
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
 import { 
-  getFirestore, collection, addDoc, getDocs 
+  getFirestore, collection, addDoc, getDocs, updateDoc, doc
 } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
 import { 
@@ -347,6 +347,133 @@ window.refreshStocks = async function() {
   alert("โหลด stock ใหม่แล้ว ✅");
 };
 
+// 🔥 Stock Content — cache + load once
+let stockCache = null;
+let originalStockCache = null;
+let changeLog = []; // เก็บประวัติการ update พร้อมเวลา
+
+async function loadStockContent() {
+  if (stockCache) {
+    renderStockTable(stockCache);
+    return;
+  }
+  await fetchAndRenderStock();
+}
+
+async function fetchAndRenderStock() {
+  const snapshot = await getDocs(collection(db, "stocks"));
+  stockCache = [];
+  snapshot.forEach(d => {
+    stockCache.push({ id: d.id, ...d.data() });
+  });
+  // เก็บ snapshot ต้นฉบับ deep copy
+  originalStockCache = JSON.parse(JSON.stringify(stockCache));
+  renderStockTable(stockCache);
+}
+
+function renderStockTable(items) {
+  const container = document.getElementById("stockTableContainer");
+  if (!container) return;
+
+  if (items.length === 0) {
+    container.innerHTML = "<p style='color:#aaa;'>ไม่มีข้อมูล stock</p>";
+    return;
+  }
+
+  const keys = ['stock', 'cost', 'selling']; // ลำดับคงที่
+
+  let html = `
+    <div style="margin-bottom:16px;">
+      <button onclick="showChanges()" style="background:#7a6f1e; color:white; border:none; padding:8px 18px; border-radius:8px; cursor:pointer; font-size:13px;">
+        🔍 ดูการเปลี่ยนแปลง
+      </button>
+    </div>
+    <table style="width:100%; border-collapse:collapse; font-size:14px;">
+    <thead>
+      <tr style="background:#1e5f7a; color:white;">
+        <th style="padding:10px; text-align:left;">รุ่น (ID)</th>`;
+  keys.forEach(k => {
+    html += `<th style="padding:10px; text-align:left;">${k}</th>`;
+  });
+  html += `<th style="padding:10px;">อัปเดต</th></tr>
+    </thead><tbody>`;
+
+  items.forEach((item, idx) => {
+    const bg = idx % 2 === 0 ? '#1a1a1a' : '#222';
+    html += `<tr style="background:${bg};">
+      <td style="padding:8px; color:#aaa; font-size:12px;">${item.id}</td>`;
+    keys.forEach(k => {
+      html += `<td style="padding:8px;">
+        <input type="text" value="${item[k] ?? ''}" 
+          data-id="${item.id}" data-key="${k}"
+          style="width:100%; background:#333; border:1px solid #444; color:white; padding:6px; border-radius:4px;">
+      </td>`;
+    });
+    html += `<td style="padding:8px; text-align:center;">
+        <button onclick="updateStock('${item.id}')" 
+          style="background:#1e7a4a; color:white; border:none; padding:6px 14px; border-radius:6px; cursor:pointer;">
+          💾 Update
+        </button>
+      </td></tr>`;
+  });
+
+  html += `</tbody></table>`;
+  container.innerHTML = html;
+}
+
+// 🔥 แสดงการเปลี่ยนแปลงทั้งหมดตั้งแต่โหลดครั้งแรก
+window.showChanges = function() {
+  if (changeLog.length === 0) {
+    alert("ยังไม่มีการ Update ใดๆ ในเซสชันนี้");
+    return;
+  }
+
+  let msg = `ประวัติการ Update (${changeLog.length} รายการ):\n\n`;
+  changeLog.forEach(c => {
+    msg += `• ${c.id}\n  ${c.key}: ${c.before} → ${c.after}\n  🕐 ${c.time}\n\n`;
+  });
+  alert(msg);
+};
+
+window.updateStock = async function(docId) {
+  const inputs = document.querySelectorAll(`input[data-id="${docId}"]`);
+  const updateData = {};
+  inputs.forEach(input => {
+    const key = input.dataset.key;
+    const val = isNaN(input.value) || input.value === '' ? input.value : Number(input.value);
+    updateData[key] = val;
+  });
+
+  try {
+    // หาค่าเดิมจาก originalStockCache
+    const orig = originalStockCache?.find(o => o.id === docId) || {};
+    const now = new Date().toLocaleString("th-TH", {
+      day:"2-digit", month:"2-digit", year:"numeric",
+      hour:"2-digit", minute:"2-digit"
+    });
+
+    // เก็บเฉพาะ field ที่เปลี่ยน
+    Object.keys(updateData).forEach(key => {
+      if (String(orig[key]) !== String(updateData[key])) {
+        changeLog.push({
+          id: docId,
+          key,
+          before: orig[key],
+          after: updateData[key],
+          time: now
+        });
+      }
+    });
+
+    await updateDoc(doc(db, "stocks", docId), updateData);
+    stockCache = null;
+    await fetchAndRenderStock();
+    alert(`✅ อัปเดต ${docId} สำเร็จ`);
+  } catch (e) {
+    alert("❌ error: " + e.message);
+  }
+};
+
 window.onload = function() {
   const today = new Date();
   const from = new Date();
@@ -604,6 +731,9 @@ window.openTab = function(id) {
   _origOpenTab(id);
   if (id === "Dashboard") {
     loadChartData();
+  }
+  if (id === "StockContent") {
+    loadStockContent();
   }
 };
 

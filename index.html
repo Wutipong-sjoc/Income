@@ -14,6 +14,7 @@
     <h2>Menu</Menu></h2>
     <button onclick="openTab('Dashboard')">📍 Dashboard</button>
     <button onclick="openTab('add')">➕ เพิ่มข้อมูล</button>
+    <button onclick="openTab('StockContent')">📉 Stock Content</button>
     <!-- <button onclick="openTab('login')">🔐 Login</button> -->
 
     <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
@@ -144,6 +145,14 @@
       </div>
 
       <p id="userStatus"></p>
+    </div>
+
+    <div id="StockContent" class="tab">
+      <h1>📉 Stock Content</h1>
+      <p style="color:#888; font-size:13px; margin-top:8px;">แก้ไขข้อมูลแล้วกด 💾 Update เพื่อบันทึก</p>
+      <div id="stockTableContainer" style="margin-top:20px;">
+        <p style="color:#aaa;">กำลังโหลด...</p>
+      </div>
     </div>
 
   </div>
