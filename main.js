@@ -214,6 +214,35 @@ window.addItemToSlip = function(slipId) {
   fillSelect(row.querySelector(".product"));
 };
 
+window.removeItem = function(button) {
+  const row = button?.parentElement;
+  if (!row) return;
+
+  const itemsContainer = row.parentElement;
+  row.remove();
+
+  if (itemsContainer && itemsContainer.children.length === 0) {
+    const wrapper = itemsContainer.closest("[data-slip]");
+    wrapper?.remove();
+  }
+};
+
+window.clearAllSlips = function() {
+  const slipContainer = document.getElementById("slipContainer");
+  if (slipContainer) slipContainer.innerHTML = "";
+
+  const costInput = document.getElementById("globalCost");
+  if (costInput) costInput.value = "";
+
+  const fileInput = document.getElementById("imgInput");
+  if (fileInput) fileInput.value = "";
+
+  const popPrice = document.getElementById("popPrice");
+  const popCost = document.getElementById("popCost");
+  if (popPrice) popPrice.value = "";
+  if (popCost) popCost.value = "";
+};
+
 // auto-match สินค้าจากราคา
 window.autoMatchProduct = function(priceInput) {
   const price = Number(priceInput.value);
@@ -731,11 +760,12 @@ window.loadChartData = async function () {
 
         const price = Number(d.price) || 0;
         const cost = Number(d.cost) || 0;
+        const qty = Number(d.qty) || 1;
         const product = d.product || "อื่นๆ";
 
         daily[date].revenue += price;
         daily[date].cost += cost;
-        daily[date].qty[product] = (daily[date].qty[product] || 0) + 1;
+        daily[date].qty[product] = (daily[date].qty[product] || 0) + qty;
 
         productMap[product] = (productMap[product] || 0) + price;
       });
@@ -897,19 +927,6 @@ window.loadChartData = async function () {
     backgroundColor: prodColors[i % prodColors.length] + "cc",
     borderRadius: 4,
     yAxisID: "y",
-    order: 2,
-  }));
-
-  const lineDatasets = allProducts.map((prod, i) => ({
-    type: "line",
-    label: "เส้น" + prod,
-    data: activeQtyMap.map(q => q[prod] || 0),
-    borderColor: prodColors[i % prodColors.length],
-    backgroundColor: "transparent",
-    tension: 0.4,
-    pointRadius: 3,
-    borderWidth: 2,
-    yAxisID: "y2",
     order: 1,
   }));
 
@@ -919,7 +936,7 @@ window.loadChartData = async function () {
   chartQty = new Chart(qtyEl, {
     data: {
       labels: activeDates,
-      datasets: [...barDatasets, ...lineDatasets],
+      datasets: barDatasets,
     },
     options: {
       responsive: true,
@@ -935,7 +952,6 @@ window.loadChartData = async function () {
       scales: {
         x:  { ticks: { color: "#888" }, grid: { color: "#222" } },
         y:  { position: "left",  ticks: { color: "#888", stepSize: 1 }, grid: { color: "#222" } },
-        y2: { position: "right", ticks: { color: "#555", stepSize: 1 }, grid: { display: false } },
       },
     },
   });
