@@ -1,8 +1,8 @@
 // 🔥 Firebase import
 // 🔥 Firebase import
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import {
-  getFirestore, collection, addDoc, getDocs, updateDoc, setDoc, doc, getDoc
+import { 
+  getFirestore, collection, addDoc, getDocs, updateDoc, doc
 } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
 import { 
@@ -65,11 +65,11 @@ onAuthStateChanged(auth, (user) => {
 
   // Hide function buttons for admin only
   //------------------------------------------------------------------------------------
-  const btnManual = document.getElementById('btnManual');
-  if (btnManual) btnManual.style.display = isAdmin ? '' : 'none';
+  // const btnManual = document.getElementById('btnManual');
+  // if (btnManual) btnManual.style.display = isAdmin ? '' : 'none';
 
-  const btnStock = document.getElementById("btnStockDetails");
-  if (btnStock) btnStock.style.display = isAdmin ? 'block' : 'none';
+  // const btnStock = document.getElementById("btnStockDetails");
+  // if (btnStock) btnStock.style.display = isAdmin ? 'block' : 'none';
   //------------------------------------------------------------------------------------
 });
 
@@ -140,142 +140,62 @@ Engine().then(m => {
 function addRow(price, product, filename) {
   const container = document.getElementById("slipContainer");
 
-  const slipId = "slip_" + Date.now();
   const wrapper = document.createElement("div");
-  wrapper.dataset.slip = slipId;
-  wrapper.style.cssText = "margin-top:16px; border:1px solid #1e5f7a; border-radius:10px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.3);";
+  wrapper.style.marginTop = "15px";
 
   wrapper.innerHTML = `
-    <div style="background:#0d3a50; color:#7ecfef; font-size:12px; padding:8px 14px; display:flex; justify-content:space-between; align-items:center;">
-      <span>📄 ${filename}</span>
-      <button onclick="addItemToSlip('${slipId}')" style="background:#1e7a4a; color:white; border:none; padding:5px 12px; border-radius:6px; cursor:pointer; font-size:12px;">➕ เพิ่มสินค้า</button>
-    </div>
-    <!-- ราคาอยู่บนสุด -->
-    <div class="slip-price-row" style="display:flex; gap:8px; padding:8px 8px 0 8px; background:#1a2a35;">
-      <div style="flex:1; background:#1e5f7a; color:white; padding:10px; text-align:center; border-radius:6px;">
+    <div style="display:flex; gap:8px;">
+
+      <div style="flex:1; background:#1e5f7a; color:white; padding:10px; text-align:center;">
+        <div style="font-size:12px;">${filename}</div>
         ราคา<br>
-        <input type="number" class="bill-price" step="0.01" style="width:90%; margin-top:4px;" oninput="autoMatchBill(this)">
+        <input type="number" class="price" value="${price}" step="0.01">
       </div>
+
+      <div style="flex:1; background:#1e5f7a; color:white; padding:10px; text-align:center;">
+        สินค้า<br>
+        <select class="product"></select>
+      </div>
+
+      <div style="flex:1; background:#1e5f7a; color:white; padding:10px; text-align:center;">
+        ต้นทุน<br>
+        <input type="number" class="cost" placeholder="ใส่ต้นทุน">
+      </div>
+
+      <button onclick="this.parentElement.parentElement.remove()">❌</button>
     </div>
-    <div class="slip-items"></div>
   `;
 
   container.appendChild(wrapper);
 
-  // set ราคา
-  const billPriceInput = wrapper.querySelector(".bill-price");
-  if (price !== "" && price !== undefined) {
-    billPriceInput.value = price;
-    autoMatchBill(billPriceInput);
-  }
-
-  addItemToSlip(slipId);
+  // fill select จาก stockList
+  const select = wrapper.querySelector(".product");
+  fillSelect(select);
 }
-
-// auto-match สินค้าจากราคาบิล
-window.autoMatchBill = function(priceInput) {
-  const price = Number(priceInput.value);
-  if (!price || stockList.length === 0) return;
-  const wrapper = priceInput.closest("[data-slip]");
-  if (!wrapper) return;
-  // match กับ item แรกใน slip
-  const firstSelect = wrapper.querySelector(".product");
-  if (!firstSelect) return;
-  const match = stockList.find(s => s.selling === price);
-  if (match) {
-    firstSelect.value = match.id;
-    autoFillCost(firstSelect);
-  }
-};
-
-// เพิ่ม item row ใน slip (ไม่มีช่องราคา)
-window.addItemToSlip = function(slipId) {
-  const wrapper = document.querySelector(`[data-slip="${slipId}"]`);
-  if (!wrapper) return;
-
-  const itemsContainer = wrapper.querySelector(".slip-items");
-  const row = document.createElement("div");
-  row.style.cssText = "display:flex; gap:8px; padding:8px; background:#1a2a35; border-top:1px solid #2a4a5a;";
-
-  row.innerHTML = `
-    <div style="flex:1.5; background:#1e5f7a; color:white; padding:10px; text-align:center; border-radius:6px;">
-      สินค้า<br>
-      <select class="product" style="width:90%; margin-top:4px;"></select>
-    </div>
-    <div style="flex:0.6; background:#1e5f7a; color:white; padding:10px; text-align:center; border-radius:6px;">
-      จำนวน<br>
-      <input type="number" class="qty" value="1" min="1" style="width:90%; margin-top:4px;">
-    </div>
-    <button onclick="removeItem(this)"
-      style="align-self:center; background:transparent; border:none; color:#f87171; font-size:18px; cursor:pointer;">❌</button>
-  `;
-
-  itemsContainer.appendChild(row);
-  fillSelect(row.querySelector(".product"));
-};
-
-// auto-match สินค้าจากราคา
-window.autoMatchProduct = function(priceInput) {
-  const price = Number(priceInput.value);
-  if (!price || stockList.length === 0) return;
-
-  const row = priceInput.closest("div[style*=flex]");
-  const select = row.querySelector(".product");
-
-  // หาสินค้าที่ selling ตรงกับราคา
-  const match = stockList.find(s => s.selling === price);
-  if (match) {
-    select.value = match.id;
-    autoFillCost(select);
-  }
-};
-
-// auto-fill ต้นทุนเมื่อเลือกสินค้า
-window.autoFillCost = function(selectEl) {
-  const id = selectEl.value;
-  const stock = stockList.find(s => s.id === id);
-  if (!stock) return;
-  const row = selectEl.closest("div[style*=flex]");
-  const costInput = row.querySelector(".cost");
-  if (costInput && stock.cost) costInput.value = stock.cost;
-};
 
 // 🔥 get data
 function getAllData() {
-  const rows = document.querySelectorAll("#slipContainer .slip-items > div");
-  const globalCost = Number(document.getElementById("globalCost")?.value || 0);
+  const rows = document.querySelectorAll("#slipContainer > div");
+
   let data = [];
+
   rows.forEach(row => {
-    const slip    = row.closest("[data-slip]");
-    const price   = slip?.querySelector(".bill-price")?.value || 0;
+    const price = row.querySelector(".price")?.value || 0;
     const product = row.querySelector(".product")?.value || "";
-    const qty     = Number(row.querySelector(".qty")?.value || 1);
-
-    // ✅ ข้าม row ที่ไม่ได้เลือกสินค้า, qty เป็น 0, หรือ WASM อ่านราคาไม่ได้ (price = 0)
-    if (!product || qty <= 0 || Number(price) <= 0) return;
-
-    const stockItem = stockList.find(s => s.id === product);
-    const stockCost = stockItem?.cost || 0;
+    const cost = row.querySelector(".cost")?.value || 0;
 
     data.push({
-      price:   Number(price),
+      price: Number(price),
       product: product,
-      qty:     qty,
-      cost:    stockCost * qty,
+      cost: Number(cost),
     });
   });
+
   return data;
 }
 
 // 🔥 SAVE
-let isSaving = false;
 window.saveData = async function () {
-
-  if (isSaving) {
-    alert("กำลัง save อยู่ กรุณารอ...");
-    return;
-  }
-  isSaving = true;
 
   if (!auth.currentUser) {
     alert("กรุณา login ก่อน");
@@ -283,88 +203,37 @@ window.saveData = async function () {
   }
 
   const data = getAllData();
-  console.log("📦 data ทั้งหมดที่จะ save:", JSON.stringify(data, null, 2));
-  console.log("📦 จำนวน items:", data.length);
   const date = document.getElementById("dateInput").value;
 
   if (!date) return alert("เลือกวันที่ก่อน");
   if (data.length === 0) return alert("ไม่มีข้อมูล");
-
-  // ✅ ตรวจ stock ก่อน save ทุก item
-  try {
-    for (let item of data) {
-      if (item.product && item.qty > 0) {
-        const stockRef = doc(db, "stocks", item.product);
-        const stockSnap = await getDoc(stockRef);
-        if (stockSnap.exists()) {
-          const currentStock = stockSnap.data().stock || 0;
-
-          // 🚫 ถ้า stock = 0 ห้าม save
-          if (currentStock <= 0) {
-            alert(`❌ "${item.product}" stock หมดแล้ว ไม่สามารถบันทึกได้`);
-            isSaving = false;
-            return;
-          }
-
-          // ⚠️ ถ้า stock < 10 แจ้งเตือน แต่ยังบันทึกได้
-          if (currentStock < 10) {
-            alert(`⚠️ "${item.product}" stock เหลือน้อย: ${currentStock} ชิ้น`);
-          }
-        }
-      }
-    }
-  } catch (checkErr) {
-    console.warn("ตรวจ stock ไม่สำเร็จ:", checkErr.message);
-  }
 
   try {
     for (let item of data) {
       await addDoc(
         collection(db, "slips", date, "items"),
         {
-          price:   item.price,
+          price: item.price,
           product: item.product,
-          qty:     item.qty || 1,
-          cost:    item.cost,
+          cost: item.cost,
           userId: auth.currentUser.uid,
           email: auth.currentUser.email
         }
       );
-
-      // ลด stock ตาม qty ที่ขายไป
-      if (item.product && item.qty > 0) {
-        try {
-          const stockRef = doc(db, "stocks", item.product);
-          const stockSnap = await getDoc(stockRef);
-          if (stockSnap.exists()) {
-            const currentStock = stockSnap.data().stock || 0;
-            await updateDoc(stockRef, {
-              stock: Math.max(0, currentStock - item.qty)
-            });
-            stockCache = null;
-          }
-        } catch (stockErr) {
-          console.warn("ลด stock ไม่สำเร็จ:", stockErr.message);
-        }
-      }
     }
-
-    // ✅ save globalCost แยกใน slips/{date} (overwrite ทุกครั้ง)
-    const globalCost = Number(document.getElementById("globalCost")?.value || 0);
-    await setDoc(doc(db, "slips", date), { globalCost }, { merge: true });
 
     alert("บันทึกสำเร็จ");
   } catch (e) {
     console.error(e);
     alert("error: " + e.message);
-  } finally {
-    isSaving = false;
   }
 };
 
 // 🔥 convert
 window.convert = function () {
   return new Promise((resolve) => {
+
+    document.getElementById("slipContainer").innerHTML = "";
 
     if (!ready) {
       alert("WASM ยังไม่พร้อม");
@@ -377,8 +246,6 @@ window.convert = function () {
       return resolve();
     }
 
-    console.log("📁 จำนวนไฟล์:", files.length);
-
     let index = 0;
 
     function runNext() {
@@ -388,7 +255,6 @@ window.convert = function () {
       }
 
       const file = files[index++];
-      console.log(`🖼️ process ไฟล์ที่ ${index}: ${file.name}`);
       const img = new Image();
       img.src = URL.createObjectURL(file);
 
@@ -434,13 +300,11 @@ window.convert = function () {
 };
 
 window.processTwice = async function () {
-  // ล้าง UI ก่อน process
-  document.getElementById("slipContainer").innerHTML = "";
-  const costInput = document.getElementById("globalCost");
-  if (costInput) costInput.value = "";
-
   console.log("RUN 1");
-  await convert();
+  await convert();   
+
+  console.log("RUN 2");
+  await convert();   
 };
 
 // 🔥 Chart instances (keep refs to destroy before redraw)
@@ -468,7 +332,7 @@ async function loadStocks() {
   stockList = [];
   snapshot.forEach(doc => {
     const d = doc.data();
-    stockList.push({ id: doc.id, name: doc.id.replace(/_/g, ' '), selling: d.selling || 0, cost: d.cost || 0 });
+    stockList.push({ id: doc.id, name: doc.id.replace(/_/g, ' ') });
   });
   // fill Modal select ด้วย
   fillSelect(document.getElementById("popProduct"));
@@ -527,12 +391,9 @@ function renderStockTable(items) {
   const keys = ['selling','cost', 'stock'];
 
   let html = `
-    <div style="margin-bottom:16px; display:flex; gap:12px; flex-wrap:wrap;">
+    <div style="margin-bottom:16px;">
       <button onclick="showChanges()" style="background:#7a6f1e; color:white; border:none; padding:8px 18px; border-radius:8px; cursor:pointer; font-size:13px;">
         🔍 ดูการเปลี่ยนแปลง
-      </button>
-      <button onclick="updateAllStocks()" style="background:#1e5f7a; color:white; border:none; padding:8px 18px; border-radius:8px; cursor:pointer; font-size:13px;">
-        💾 Update all
       </button>
     </div>
     <table style="width:100%; border-collapse:collapse; font-size:14px;">
@@ -621,66 +482,6 @@ window.updateStock = async function(docId) {
   }
 };
 
-window.updateAllStocks = async function() {
-  const rows = Array.from(document.querySelectorAll("#stockTableContainer tbody tr"));
-  if (rows.length === 0) {
-    alert("ไม่มีข้อมูล stock ให้ update");
-    return;
-  }
-
-  const updates = rows.map(row => {
-    const firstInput = row.querySelector("input[data-id]");
-    if (!firstInput) return null;
-
-    const docId = firstInput.dataset.id;
-    const updateData = {};
-    row.querySelectorAll(`input[data-id="${docId}"]`).forEach(input => {
-      const key = input.dataset.key;
-      const val = isNaN(input.value) || input.value === '' ? input.value : Number(input.value);
-      updateData[key] = val;
-    });
-
-    return { docId, updateData };
-  }).filter(Boolean);
-
-  if (updates.length === 0) {
-    alert("ไม่พบข้อมูลที่จะ update");
-    return;
-  }
-
-  const now = new Date().toLocaleString("th-TH", {
-    day:"2-digit", month:"2-digit", year:"numeric",
-    hour:"2-digit", minute:"2-digit"
-  });
-
-  try {
-    updates.forEach(({ docId, updateData }) => {
-      const orig = originalStockCache?.find(o => o.id === docId) || {};
-      Object.keys(updateData).forEach(key => {
-        if (String(orig[key]) !== String(updateData[key])) {
-          changeLog.push({
-            id: docId,
-            key,
-            before: orig[key],
-            after: updateData[key],
-            time: now
-          });
-        }
-      });
-    });
-
-    await Promise.all(
-      updates.map(({ docId, updateData }) => updateDoc(doc(db, "stocks", docId), updateData))
-    );
-
-    stockCache = null;
-    await fetchAndRenderStock();
-    alert(`✅ Update all สำเร็จ ${updates.length} รายการ`);
-  } catch (e) {
-    alert("❌ error: " + e.message);
-  }
-};
-
 window.onload = function() {
   const today = new Date();
   const from = new Date();
@@ -739,15 +540,6 @@ window.loadChartData = async function () {
 
         productMap[product] = (productMap[product] || 0) + price;
       });
-
-      // ✅ บวก globalCost ของวันนั้นเพิ่ม
-      try {
-        const metaSnap = await getDoc(doc(db, "slips", date));
-        if (metaSnap.exists()) {
-          daily[date].cost += Number(metaSnap.data().globalCost || 0);
-        }
-      } catch (_) {}
-
     } catch (e) {
       // date might not exist — skip
     }

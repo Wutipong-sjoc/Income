@@ -14,7 +14,8 @@
     <h2>Menu</Menu></h2>
     <button onclick="openTab('Dashboard')">📍 Dashboard</button>
     <button onclick="openTab('add')">➕ เพิ่มข้อมูล</button>
-    <button onclick="openTab('StockContent')">📉 Stock Content</button>
+    <!-- <button onclick="openTab('StockDetails')">📉 Stock Details</button> -->
+    <button id="btnStockDetails" onclick="openTab('StockDetails')">📉 Stock Content</button>
     <!-- <button onclick="openTab('login')">🔐 Login</button> -->
 
     <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
@@ -97,15 +98,22 @@
       <h1>➕ เพิ่มข้อมูล</h1>
 
       <input type="file" id="imgInput" multiple>
-      <button onclick="processTwice()">📑 Process</button>
-      <button onclick="saveData()">💾 Save</button>
-      <button id="btnManual" onclick="document.getElementById('myModal').style.display='flex'">🙌 Manual</button>
-      <button onclick="refreshStocks()">🔄 Refresh Stock</button>
+      <button onclick="processTwice()" style="background:#1e5f7a; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px;">📑 Process</button>
+      <button onclick="saveData()" style="background:#1e7a4a; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px;">💾 Save</button>
+      <button id="btnManual" onclick="document.getElementById('myModal').style.display='flex'" style="background:#7a6f1e; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px;">🙌 Manual</button>
+      <button onclick="refreshStocks()" style="background:#333; color:#aaa; border:1px solid #555; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px;">🔄 Refresh Stock</button>
 
       <!-- วันที่ -->
       <div style="margin-top:15px;">
         <label>วัน เดือน ปี:</label><br>
         <input type="date" id="dateInput">
+      </div>
+
+      <!-- ต้นทุนกลาง โผล่หลัง process -->
+      <div id="globalCostDiv" style="display:flex; margin-top:12px; align-items:center; gap:12px;">
+        <label style="font-size:16px; color:#aaa; font-weight:bold;">💰 ต้นทุน (ทุกบิล):</label>
+        <input type="number" id="globalCost" placeholder="ใส่ต้นทุน"
+          style="padding:10px 16px; border-radius:8px; background:#1a3a4a; border:1px solid #2a5f7a; color:white; font-size:16px; width:200px;">
       </div>
 
       <!-- ตาราง -->
@@ -147,8 +155,8 @@
       <p id="userStatus"></p>
     </div>
 
-    <div id="StockContent" class="tab">
-      <h1>📉 Stock Content</h1>
+    <div id="StockDetails" class="tab">
+      <h1>📉 Stock Details</h1>
       <p style="color:#888; font-size:13px; margin-top:8px;">แก้ไขข้อมูลแล้วกด 💾 Update เพื่อบันทึก</p>
       <div id="stockTableContainer" style="margin-top:20px;">
         <p style="color:#aaa;">กำลังโหลด...</p>

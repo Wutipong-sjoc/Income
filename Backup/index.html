@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Income</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:,">
+</head>
+<body>
+
+<div class="layout">
+
+  <div class="sidebar">
+    <h2>Menu</Menu></h2>
+    <button onclick="openTab('Dashboard')">📍 Dashboard</button>
+    <button onclick="openTab('add')">➕ เพิ่มข้อมูล</button>
+    <!-- <button onclick="openTab('StockDetails')">📉 Stock Details</button> -->
+    <button id="btnStockDetails" onclick="openTab('StockDetails')">📉 Stock Content</button>
+    <!-- <button onclick="openTab('login')">🔐 Login</button> -->
+
+    <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
+      <div id="sidebarUser" style="font-size:12px;">
+        ❌ ยังไม่ login
+      </div>
+
+      <!-- <button onclick="login()">Login</button> -->
+       <button onclick="logout()">Logout</button>
+      <button id="loginBtn1" onclick="openTab('login')">🔐 Login</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- Dashboard -->
+    <div id="Dashboard" class="tab active">
+      <h1>📍 Dashboard</h1>
+
+      <!-- Dashboard Summary -->
+      <div id="summaryCards" style="display:flex; gap:16px; flex-wrap:wrap; margin-top:20px;">
+        <div class="summary-card" style="background:#1e5f7a; color:white; padding:16px 24px; border-radius:10px; min-width:140px; text-align:center;">
+          <div style="font-size:13px; opacity:0.8;">รายได้รวม</div>
+          <div id="totalRevenue" style="font-size:28px; font-weight:bold;">—</div>
+          <div style="font-size:11px; opacity:0.6;">บาท</div>
+        </div>
+        <div class="summary-card" style="background:#7a3e1e; color:white; padding:16px 24px; border-radius:10px; min-width:140px; text-align:center;">
+          <div style="font-size:13px; opacity:0.8;">ต้นทุนรวม</div>
+          <div id="totalCost" style="font-size:28px; font-weight:bold;">—</div>
+          <div style="font-size:11px; opacity:0.6;">บาท</div>
+        </div>
+        <div class="summary-card" style="background:#1e7a4a; color:white; padding:16px 24px; border-radius:10px; min-width:140px; text-align:center;">
+          <div style="font-size:13px; opacity:0.8;">กำไรรวม</div>
+          <div id="totalProfit" style="font-size:28px; font-weight:bold;">—</div>
+          <div style="font-size:11px; opacity:0.6;">บาท</div>
+        </div>
+      </div>
+
+      <!-- Chart Controls -->
+      <div style="margin-top:24px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <label style="font-size:13px;">ช่วงวันที่:</label>
+        <input type="date" id="chartFrom">
+        <span>—</span>
+        <input type="date" id="chartTo">
+        <button onclick="loadChartData()">🔍 โหลด</button>
+        <button id="btnDay" onclick="setChartMode('day')" style="background:#1e5f7a; color:white;">📅 รายวัน</button>
+        <button id="btnMonth" onclick="setChartMode('month')">🗓️ รายเดือน</button>
+      </div>
+
+      <!-- Bar Chart -->
+      <div style="margin-top:24px; background:#111; border-radius:12px; padding:20px;">
+        <h3 style="color:#aaa; margin:0 0 16px 0; font-size:14px;">📊 รายได้ / ต้นทุน / กำไร รายวัน</h3>
+        <canvas id="incomeChart" height="100"></canvas>
+      </div>
+
+      <div id="chartStatus" style="margin-top:12px; color:#888; font-size:13px;"></div>
+
+      <!-- Qty Chart -->
+      <div style="margin-top:24px; background:#111; border-radius:12px; padding:20px;">
+        <h3 style="color:#aaa; margin:0 0 16px 0; font-size:14px;">📦 จำนวนสินค้าที่ขายได้ รายวัน</h3>
+        <canvas id="qtyChart" height="100"></canvas>
+      </div>
+
+      <!-- Pie Chart -->
+      <!-- <div style="display:flex; gap:20px; margin-top:20px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:220px; background:#111; border-radius:12px; padding:20px;">
+          <h3 style="color:#aaa; margin:0 0 16px 0; font-size:14px;">🍩 สัดส่วนสินค้า (รายได้)</h3>
+          <canvas id="productChart"></canvas>
+        </div>
+        <div style="flex:1; min-width:220px; background:#111; border-radius:12px; padding:20px;">
+          <h3 style="color:#aaa; margin:0 0 16px 0; font-size:14px;">📈 กำไร / ต้นทุน</h3>
+          <canvas id="profitPieChart"></canvas>
+        </div>
+      </div> -->
+    
+    </div>
+
+    <!-- ADD -->
+    <div id="add" class="tab">
+      <h1>➕ เพิ่มข้อมูล</h1>
+
+      <input type="file" id="imgInput" multiple>
+      <button onclick="processTwice()">📑 Process</button>
+      <button onclick="saveData()">💾 Save</button>
+      <button id="btnManual" onclick="document.getElementById('myModal').style.display='flex'">🙌 Manual</button>
+      <button onclick="refreshStocks()">🔄 Refresh Stock</button>
+
+      <!-- วันที่ -->
+      <div style="margin-top:15px;">
+        <label>วัน เดือน ปี:</label><br>
+        <input type="date" id="dateInput">
+      </div>
+
+      <!-- ตาราง -->
+      <div id="slipContainer" style="margin-top:20px;"></div>
+
+      <!-- Modal -->
+      <div id="myModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:999;">
+        <div style="background:#1a1a1a; padding:24px; border-radius:12px; min-width:300px;">
+          <h3 style="margin:0 0 16px; color:white;">เพิ่มข้อมูล (Not ready‼️‼️) </h3>
+
+          <input type="number" id="popPrice" placeholder="ราคา" style="width:100%; margin-bottom:10px;"><br>
+          <select id="popProduct" style="width:100%; margin-bottom:10px;">
+            <option>กำลังโหลด...</option>
+          </select><br>
+          <input type="number" id="popCost" placeholder="ต้นทุน" style="width:100%; margin-bottom:16px;">
+
+          <div style="display:flex; gap:8px; justify-content:flex-end;">
+            <button onclick="document.getElementById('myModal').style.display='none'">ยกเลิก</button>
+            <button onclick="saveModal()">💾 Save</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- LOGIN -->
+    <div id="login" class="tab">
+      <h1>🔐 Login</h1>
+
+      <input id="email" placeholder="Email"><br><br>
+      <input id="password" type="password" placeholder="Password"><br><br>
+
+      <div style="display:flex; gap:10px;">
+        <button onclick="register()">Register</button>
+        <button onclick="login()">Login</button>
+        <button onclick="logout()">Logout</button>
+      </div>
+
+      <p id="userStatus"></p>
+    </div>
+
+    <div id="StockDetails" class="tab">
+      <h1>📉 Stock Details</h1>
+      <p style="color:#888; font-size:13px; margin-top:8px;">แก้ไขข้อมูลแล้วกด 💾 Update เพื่อบันทึก</p>
+      <div id="stockTableContainer" style="margin-top:20px;">
+        <p style="color:#aaa;">กำลังโหลด...</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- <script src="node_modules/chart.js/dist/chart.umd.js"></script> -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="engine_myrun.js"></script>
+<script type="module" src="main.js"></script>
+
+</body>
+</html>
