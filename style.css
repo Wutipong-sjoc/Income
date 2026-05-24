@@ -36,3 +36,16 @@ body {
 .tab.active {
   display: block;
 }
+
+#slipContainer {
+  /* แสดงบิลเป็น 2 คอลัมน์เสมอ และให้เลื่อนแนวนอนถ้าหน้าจอแคบ */
+  display: grid;
+  grid-template-columns: repeat(2, minmax(520px, 1fr));
+  gap: 16px;
+  align-items: start;
+  overflow-x: auto;
+}
+
+#slipContainer > div {
+  margin-top: 0 !important;
+}

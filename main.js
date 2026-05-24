@@ -137,42 +137,87 @@ Engine().then(m => {
 
 
 // 🔥 add row
-function addRow(price, product, filename) {
+function addRow(price, product, filename, imageUrl = "") {
   const container = document.getElementById("slipContainer");
+  const displayFilename = escapeHtml(filename);
+
+  // แสดงรูป preview ด้านซ้ายของแต่ละบิล และวางช่องกรอกข้อมูลด้านขวา
+  const slipBodyStyle = imageUrl
+    ? "display:grid; grid-template-columns:150px minmax(220px, 1fr); gap:12px; padding:12px; background:#f8f9fb; align-items:start;"
+    : "display:block; padding:12px; background:#f8f9fb;";
 
   const slipId = "slip_" + Date.now();
   const wrapper = document.createElement("div");
   wrapper.dataset.slip = slipId;
+  wrapper.dataset.filename = filename;
+  if (imageUrl) wrapper.dataset.previewUrl = imageUrl;
   wrapper.style.cssText = "margin-top:16px; border:1px solid #d6d9de; border-radius:14px; overflow:hidden; box-shadow:0 10px 24px rgba(15, 23, 42, 0.08); background:#f8f9fb;";
 
   wrapper.innerHTML = `
     <div style="background:#4b5563; color:#f9fafb; font-size:12px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center;">
-      <span>📄 ${filename}</span>
+      <span>📄 ${displayFilename}</span>
       <button onclick="addItemToSlip('${slipId}')" style="background:#6b7280; color:white; border:1px solid #565c67; padding:6px 14px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:700;">➕ เพิ่มสินค้า</button>
     </div>
-    <!-- ราคาอยู่บนสุด -->
-    <div class="slip-price-row" style="display:flex; gap:10px; padding:10px 10px 0 10px; background:#f8f9fb;">
-      <div style="flex:1; background:#eceff3; color:#374151; padding:12px; text-align:center; border-radius:12px; border:1px solid #d7dbe2; font-weight:700;">
-        ราคา<br>
-        <input type="number" class="bill-price" step="0.01" style="width:90%; margin-top:6px; height:40px; border-radius:10px; border:1px solid #d1d5db; background:#ffffff; padding:0 12px; color:#2f3437; box-sizing:border-box;" oninput="autoMatchBill(this)">
+    <div style="${slipBodyStyle}">
+      ${imageUrl ? `
+        <div style="width:150px; height:220px; overflow:hidden; border:1px solid #d7dbe2; border-radius:12px; background:#f8f9fb; display:flex; align-items:flex-start; justify-content:center;">
+          <img src="${imageUrl}" alt="${displayFilename}" style="display:block; width:100%; height:100%; object-fit:contain;">
+        </div>
+      ` : ""}
+      <div style="min-width:220px;">
+        <!-- ราคาอยู่บนสุด -->
+        <div class="slip-price-row" style="display:flex; gap:10px; padding:0 0 10px 0; background:#f8f9fb;">
+          <div style="flex:1; background:#eceff3; color:#374151; padding:12px; text-align:center; border-radius:12px; border:1px solid #d7dbe2; font-weight:700;">
+            ราคา<br>
+            <input type="number" class="bill-price" step="0.01" style="width:90%; margin-top:6px; height:40px; border-radius:10px; border:1px solid #d1d5db; background:#ffffff; padding:0 12px; color:#2f3437; box-sizing:border-box;" oninput="handleBillPriceInput(this)">
+            <div class="price-warning" style="display:none; margin-top:8px; color:#9f1239; font-size:12px; font-weight:700;">OCR อ่านราคาไม่ได้ กรุณากรอกราคาเอง</div>
+          </div>
+        </div>
+        <div class="slip-items"></div>
       </div>
     </div>
-    <div class="slip-items"></div>
   `;
 
   container.appendChild(wrapper);
 
-  // set ราคา
+  // ใส่ราคา OCR และเช็กทันที ถ้าเป็น 0 จะขึ้นเตือนให้กรอกเอง
   const billPriceInput = wrapper.querySelector(".bill-price");
   if (price !== "" && price !== undefined) {
     billPriceInput.value = price;
-    autoMatchBill(billPriceInput);
+    handleBillPriceInput(billPriceInput);
   }
 
   addItemToSlip(slipId);
 }
 
+function escapeHtml(value) {
+  // กันชื่อไฟล์ที่มีอักขระพิเศษทำให้ HTML เพี้ยน
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // auto-match สินค้าจากราคาบิล
+window.handleBillPriceInput = function(priceInput) {
+  // เวลาแก้ราคาเอง ให้ล้าง/แสดงสถานะเตือน และลอง match สินค้าใหม่
+  markPriceStatus(priceInput);
+  autoMatchBill(priceInput);
+};
+
+function markPriceStatus(priceInput) {
+  // ราคา 0 มักเกิดจาก OCR อ่านไม่ได้ จึง highlight ให้แก้มือก่อน Save
+  const price = Number(priceInput.value);
+  const warning = priceInput.closest(".slip-price-row")?.querySelector(".price-warning");
+  const isInvalid = price <= 0;
+
+  priceInput.style.borderColor = isInvalid ? "#e11d48" : "#d1d5db";
+  priceInput.style.background = isInvalid ? "#fff1f2" : "#ffffff";
+  if (warning) warning.style.display = isInvalid ? "block" : "none";
+}
+
 window.autoMatchBill = function(priceInput) {
   const price = Number(priceInput.value);
   if (!price || stockList.length === 0) return;
@@ -223,13 +268,13 @@ window.removeItem = function(button) {
 
   if (itemsContainer && itemsContainer.children.length === 0) {
     const wrapper = itemsContainer.closest("[data-slip]");
+    revokeSlipPreviewUrl(wrapper);
     wrapper?.remove();
   }
 };
 
 window.clearAllSlips = function() {
-  const slipContainer = document.getElementById("slipContainer");
-  if (slipContainer) slipContainer.innerHTML = "";
+  clearSlipContainer();
   clearCostRows();
 
   const fileInput = document.getElementById("imgInput");
@@ -240,6 +285,19 @@ window.clearAllSlips = function() {
   if (popPrice) popPrice.value = "";
   if (popCost) popCost.value = "";
 };
+
+function clearSlipContainer() {
+  // ล้างรายการบิลพร้อมคืน object URL ของรูป preview เพื่อไม่ให้ memory ค้าง
+  const slipContainer = document.getElementById("slipContainer");
+  if (!slipContainer) return;
+  slipContainer.querySelectorAll("[data-preview-url]").forEach(revokeSlipPreviewUrl);
+  slipContainer.innerHTML = "";
+}
+
+function revokeSlipPreviewUrl(wrapper) {
+  const previewUrl = wrapper?.dataset?.previewUrl;
+  if (previewUrl) URL.revokeObjectURL(previewUrl);
+}
 
 const COST_ITEM_OPTIONS = [
   "packaging",
@@ -359,6 +417,13 @@ function getAllData() {
   return data;
 }
 
+function getZeroPriceSlipNames() {
+  // ใช้กัน Save เมื่อยังมีบิลที่ OCR อ่านราคาไม่ได้
+  return Array.from(document.querySelectorAll("#slipContainer [data-slip]"))
+    .filter(slip => Number(slip.querySelector(".bill-price")?.value || 0) <= 0)
+    .map(slip => slip.dataset.filename || "ไม่ทราบชื่อไฟล์");
+}
+
 // 🔥 SAVE
 let isSaving = false;
 window.saveData = async function () {
@@ -378,8 +443,18 @@ window.saveData = async function () {
   console.log("📦 data ทั้งหมดที่จะ save:", JSON.stringify(data, null, 2));
   console.log("📦 จำนวน items:", data.length);
   const date = document.getElementById("dateInput").value;
+  const zeroPriceSlipNames = getZeroPriceSlipNames();
 
   if (!date) return alert("เลือกวันที่ก่อน");
+  if (zeroPriceSlipNames.length > 0) {
+    alert("มีบิลที่ OCR อ่านราคาไม่ได้ กรุณากรอกราคาเองก่อน Save:\n" + zeroPriceSlipNames.join("\n"));
+    const firstZeroPriceInput = Array.from(document.querySelectorAll("#slipContainer .bill-price"))
+      .find(input => Number(input.value || 0) <= 0);
+    firstZeroPriceInput?.focus();
+    firstZeroPriceInput?.select();
+    isSaving = false;
+    return;
+  }
   if (data.length === 0) return alert("ไม่มีข้อมูล");
 
   // ✅ ตรวจ stock ก่อน save ทุก item
@@ -456,7 +531,9 @@ window.saveData = async function () {
 };
 
 // 🔥 convert
-window.convert = function () {
+window.convert = function (renderRows = true) {
+  // แปลงไฟล์ที่เลือกเป็นภาพขาวดำ ส่งเข้า WASM OCR แล้ว render เป็นบิลบนหน้าเว็บ
+  // renderRows ยังเผื่อไว้สำหรับอนาคต ถ้าต้องการทดลองอ่านโดยไม่สร้าง UI
   return new Promise((resolve) => {
 
     if (!ready) {
@@ -483,7 +560,8 @@ window.convert = function () {
       const file = files[index++];
       console.log(`🖼️ process ไฟล์ที่ ${index}: ${file.name}`);
       const img = new Image();
-      img.src = URL.createObjectURL(file);
+      const imageUrl = URL.createObjectURL(file);
+      img.src = imageUrl;
 
       img.onload = () => {
         const canvas = document.createElement("canvas");
@@ -494,29 +572,17 @@ window.convert = function () {
         ctx.drawImage(img, 0, 0);
 
         const { data } = ctx.getImageData(0, 0, img.width, img.height);
-
-        const binary = new Uint8Array(img.width * img.height);
-        let j = 0;
-
-        for (let i = 0; i < data.length; i += 4) {
-          const gray = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
-          binary[j++] = gray > 127 ? 255 : 0;
-        }
-
-        const ptr = wasm._malloc(binary.length);
-        wasm.HEAPU8.set(binary, ptr);
-
-        wasm.myrun(ptr, img.width, img.height);
-        const final = wasm.get_final();
+        const final = readPriceWithFallback(data, img.width, img.height, file.name);
 
         let product = "กาแฟ";
         if (final >= 0.1 && final < 0.2) product = "น้ำ";
         else if (final >= 0.2) product = "ขนม";
 
-        addRow(final.toFixed(2), product, file.name);
-
-        wasm._free(ptr);
-        URL.revokeObjectURL(img.src);
+        if (renderRows) {
+          addRow(final.toFixed(2), product, file.name, imageUrl);
+        } else {
+          URL.revokeObjectURL(imageUrl);
+        }
 
         runNext(); // 🔁 ไปตัวต่อไป
       };
@@ -526,13 +592,67 @@ window.convert = function () {
   });
 };
 
+function readPriceWithFallback(imageData, width, height, filename = "unknown") {
+  // log เป็น group ต่อไฟล์ จะได้ดูง่ายว่า threshold ไหนอ่านได้/ไม่ได้
+  console.group(`OCR threshold: ${filename}`);
+
+  // รอบแรกใช้ threshold เดิม 127 เพื่อคง behavior ปกติที่เคยอ่านได้ดี
+  let final = runOcrAtThreshold(imageData, width, height, 127);
+  let attempts = 1;
+  console.log(`try ${attempts}: threshold=127, result=${final.toFixed(2)}`);
+  if (final > 0) {
+    console.log(`✅ ใช้ threshold 127 หลังลอง ${attempts} ครั้ง`);
+    console.groupEnd();
+    return final;
+  }
+
+  // ถ้าได้ 0 แปลว่า OCR อ่านราคาไม่ได้ ลอง threshold อื่นเพื่อช่วยรูปที่จาง/เข้มต่างกัน
+  const fallbackThresholds = [100, 150, 80, 180, 60, 200];
+  for (const threshold of fallbackThresholds) {
+    attempts++;
+    final = runOcrAtThreshold(imageData, width, height, threshold);
+    console.log(`try ${attempts}: threshold=${threshold}, result=${final.toFixed(2)}`);
+    if (final > 0) {
+      console.log(`✅ ใช้ threshold ${threshold} หลังลอง ${attempts} ครั้ง`);
+      console.groupEnd();
+      return final;
+    }
+  }
+
+  // ถ้ายังอ่านไม่ได้จริง ๆ ให้คืน 0 เพื่อให้ UI เตือนและบังคับกรอกมือก่อน Save
+  console.warn(`⚠️ OCR ยังอ่านไม่ได้หลังลอง ${attempts} ครั้ง`);
+  console.groupEnd();
+  return 0;
+}
+
+function runOcrAtThreshold(imageData, width, height, threshold) {
+  // WASM OCR รับภาพขาวดำเท่านั้น เลยแปลงรูปด้วย threshold ที่กำหนดก่อนส่งเข้า engine
+  const binary = new Uint8Array(width * height);
+  let binaryIndex = 0;
+
+  for (let i = 0; i < imageData.length; i += 4) {
+    const gray = 0.299 * imageData[i] + 0.587 * imageData[i + 1] + 0.114 * imageData[i + 2];
+    binary[binaryIndex++] = gray > threshold ? 255 : 0;
+  }
+
+  const ptr = wasm._malloc(binary.length);
+  wasm.HEAPU8.set(binary, ptr);
+
+  wasm.myrun(ptr, width, height);
+  const final = wasm.get_final();
+
+  wasm._free(ptr);
+  return final;
+}
+
 window.processTwice = async function () {
-  // ล้าง UI ก่อน process
-  document.getElementById("slipContainer").innerHTML = "";
+  // ล้าง UI ก่อน process แต่ไม่ล้างไฟล์ที่เลือกไว้
+  clearSlipContainer();
   clearCostRows();
 
-  console.log("RUN 1");
-  await convert();
+  // ตอนนี้มี fallback threshold แล้ว จึงรัน OCR แค่รอบเดียวต่อการกด Process
+  console.log("RUN OCR");
+  await convert(true);
 };
 
 // 🔥 Chart instances (keep refs to destroy before redraw)
