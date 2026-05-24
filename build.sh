@@ -1,7 +1,12 @@
 #!/bin/bash
 set -e
 
-emcc engine/ImgProc.cpp -O2 \
+# For Mac/Linux
+# emcc engine/ImgProc.cpp -O2 \ 
+
+# For Windows
+~/OneDrive/Desktop/emsdk/upstream/emscripten/emcc.bat engine/ImgProc.cpp -O2 \
+
   -s WASM=1 \
   -s MODULARIZE=1 \
   -s EXPORT_NAME="Engine" \
