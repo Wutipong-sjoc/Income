@@ -8,8 +8,10 @@
 </head>
 <body>
 
+<!-- Layout หลักของเว็บ: sidebar ด้านบน + content สำหรับแต่ละ tab -->
 <div class="layout">
 
+  <!-- เมนูหลัก ใช้ปุ่มเรียก openTab() เพื่อสลับหน้าโดยไม่ reload เว็บ -->
   <div class="sidebar">
     <h2>Menu</h2>
     <button onclick="openTab('Dashboard')">📍 Dashboard</button>
@@ -27,6 +29,7 @@
 
   <div class="content">
 
+    <!-- Dashboard: แสดง summary รายได้/ต้นทุน/กำไร และกราฟจาก Firestore -->
     <div id="Dashboard" class="tab active">
       <h1>📍 Dashboard</h1>
 
@@ -71,20 +74,24 @@
       </div>
     </div>
 
+    <!-- Add: หน้าเพิ่มข้อมูลจากรูปสลิป, OCR, ต้นทุนรวม, และบันทึกข้อมูล -->
     <div id="add" class="tab">
       <h1>➕ เพิ่มข้อมูล</h1>
 
+      <!-- Controls หลัก: เลือกรูป, Process OCR, Save ลง Firestore, Clear UI, หรือเพิ่ม Manual -->
       <input type="file" id="imgInput" multiple>
       <button onclick="processTwice()" style="background:#1e5f7a; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px;">📑 Process</button>
       <button onclick="saveData()" style="background:#1e7a4a; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px;">💾 Save</button>
       <button onclick="clearAllSlips()" style="background:#8b1e3f; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px;">🗑 Clear all</button>
       <button id="btnManual" onclick="document.getElementById('myModal').style.display='flex'" style="background:#7a6f1e; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px;">🙌 Manual</button>
 
+      <!-- วันที่นี้ใช้เป็น document/path ของ slips/{date} ตอน save -->
       <div style="margin-top:15px;">
         <label>วัน เดือน ปี:</label><br>
         <input type="date" id="dateInput">
       </div>
 
+      <!-- ต้นทุนรวมทุกบิล เช่น packaging/ค่าส่ง จะถูก save แยกไว้ใน slips/{date} -->
       <div id="globalCostDiv" style="margin-top:12px;">
         <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
           <label style="font-size:16px; color:#aaa; font-weight:bold;">💰 ต้นทุน (ทุกบิล):</label>
@@ -93,8 +100,10 @@
         <div id="costRows" style="display:flex; flex-direction:column; gap:12px;"></div>
       </div>
 
+      <!-- ตรงนี้ main.js จะ render slip card จาก OCR ลงมาแบบ 2 คอลัมน์ -->
       <div id="slipContainer" style="margin-top:20px;"></div>
 
+      <!-- Modal สำหรับเพิ่มรายการเองโดยไม่ผ่าน OCR -->
       <div id="myModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:999;">
         <div style="background:#1a1a1a; padding:24px; border-radius:12px; min-width:300px;">
           <h3 style="margin:0 0 16px; color:white;">เพิ่มข้อมูล Manual</h3>
@@ -113,6 +122,7 @@
       </div>
     </div>
 
+    <!-- Login: สมัคร/เข้าสู่ระบบ/ออกจากระบบด้วย Firebase Auth -->
     <div id="login" class="tab">
       <h1>🔐 Login</h1>
 
@@ -128,6 +138,7 @@
       <p id="userStatus"></p>
     </div>
 
+    <!-- StockDetails: ตารางแก้ stock/cost/selling เฉพาะ admin -->
     <div id="StockDetails" class="tab">
       <h1>📉 Stock Details</h1>
       <p style="color:#888; font-size:13px; margin-top:8px;">แก้ไขข้อมูล stock แล้วกด 💾 Update เพื่อบันทึก</p>
@@ -139,6 +150,7 @@
   </div>
 </div>
 
+<!-- Dependencies: Chart.js สำหรับกราฟ, engine_myrun.js คือ WASM OCR, main.js คือ logic หลัก -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="engine_myrun.js"></script>
 <script type="module" src="main.js"></script>

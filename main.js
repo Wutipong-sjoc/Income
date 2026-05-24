@@ -1,5 +1,7 @@
-// 🔥 Firebase import
-// 🔥 Firebase import
+// =========================
+// Firebase imports
+// โหลด Firebase SDK ที่ใช้ทั้ง Firestore และ Auth จาก CDN แบบ ES module
+// =========================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
 import {
   getFirestore, collection, addDoc, getDocs, updateDoc, setDoc, doc, getDoc
@@ -13,7 +15,10 @@ import {
   signOut
 } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
 
-// 🔥 config
+// =========================
+// Firebase setup
+// config นี้ผูกเว็บกับ Firebase project แล้วสร้าง instance สำหรับ db/auth
+// =========================
 const firebaseConfig = {
   apiKey: "AIzaSyCgray3WkxNhzphkj-00tA_viq_1_tToPo",
   authDomain: "income-e90fe.firebaseapp.com",
@@ -23,12 +28,14 @@ const firebaseConfig = {
   appId: "1:462986865238:web:3e9ac407ed2e2bb9f029f7"
 };
 
-// 🔥 init
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-// 🔥 UI helper
+// =========================
+// Auth + navigation
+// จัดการสถานะ login, ซ่อน/แสดงปุ่ม admin, และเปลี่ยน tab ในหน้าเดียว
+// =========================
 function setUserStatus(text) {
   const top = document.getElementById("userStatus");
   const side = document.getElementById("sidebarUser");
@@ -37,7 +44,6 @@ function setUserStatus(text) {
   if (side) side.innerText = text;
 }
 
-// 🔥 Auth state
 const ADMIN_EMAILS = [ // ← email admin here!
   "wutipongg@gmail.com"
 ];
@@ -73,7 +79,6 @@ onAuthStateChanged(auth, (user) => {
   //------------------------------------------------------------------------------------
 });
 
-// 🔥 Register
 window.register = async function () {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
@@ -86,7 +91,6 @@ window.register = async function () {
   }
 };
 
-// 🔥 Login
 window.login = async function () {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
@@ -106,13 +110,11 @@ window.login = async function () {
   }
 };
 
-// 🔥 Logout
 window.logout = async function () {
   await signOut(auth);
   alert("logout แล้ว");
 };
 
-// 🔥 Tab
 window.openTab = function(id) {
   document.querySelectorAll(".tab").forEach(t => {
     t.classList.remove("active");
@@ -121,7 +123,12 @@ window.openTab = function(id) {
 };
 
 
-// 🔥 WASM
+// =========================
+// WASM OCR engine
+// โหลด engine_myrun.js แล้ว map C++ functions เป็น JS functions:
+// - myrun(ptr, width, height): อ่านภาพขาวดำ
+// - get_final(): คืนราคาที่ OCR อ่านได้
+// =========================
 let wasm = null;
 let ready = false;
 
@@ -136,8 +143,11 @@ Engine().then(m => {
 });
 
 
-// 🔥 add row
-function addRow(price, product, filename, imageUrl = "") {
+// =========================
+// Slip card rendering
+// สร้าง card ต่อหนึ่งรูปสลิป: รูป preview อยู่ซ้าย ช่องราคา/สินค้า/จำนวนอยู่ขวา
+// =========================
+function addRow(price, filename, imageUrl = "") {
   const container = document.getElementById("slipContainer");
   const displayFilename = escapeHtml(filename);
 
@@ -188,6 +198,7 @@ function addRow(price, product, filename, imageUrl = "") {
   }
 
   addItemToSlip(slipId);
+  return wrapper;
 }
 
 function escapeHtml(value) {
@@ -200,7 +211,10 @@ function escapeHtml(value) {
     .replace(/'/g, "&#039;");
 }
 
-// auto-match สินค้าจากราคาบิล
+// =========================
+// Price input helpers
+// ทุกครั้งที่ราคาเปลี่ยน จะ highlight ถ้าเป็น 0 และลอง match สินค้าจากราคา selling ใน stock
+// =========================
 window.handleBillPriceInput = function(priceInput) {
   // เวลาแก้ราคาเอง ให้ล้าง/แสดงสถานะเตือน และลอง match สินค้าใหม่
   markPriceStatus(priceInput);
@@ -233,7 +247,10 @@ window.autoMatchBill = function(priceInput) {
   }
 };
 
-// เพิ่ม item row ใน slip (ไม่มีช่องราคา)
+// =========================
+// Slip item rows
+// ภายในหนึ่งบิลสามารถมีหลายสินค้าได้ แต่ใช้ราคาบิลเดียวร่วมกัน
+// =========================
 window.addItemToSlip = function(slipId) {
   const wrapper = document.querySelector(`[data-slip="${slipId}"]`);
   if (!wrapper) return;
@@ -365,7 +382,10 @@ function getCostBreakdown() {
     .filter(item => item.amount > 0);
 }
 
-// auto-match สินค้าจากราคา
+// =========================
+// Product/cost helpers
+// ใช้ stockList เป็นแหล่งข้อมูลสินค้า ราคา selling และต้นทุน
+// =========================
 window.autoMatchProduct = function(priceInput) {
   const price = Number(priceInput.value);
   if (!price || stockList.length === 0) return;
@@ -391,7 +411,10 @@ window.autoFillCost = function(selectEl) {
   if (costInput && stock.cost) costInput.value = stock.cost;
 };
 
-// 🔥 get data
+// =========================
+// Collect form data before saving
+// อ่านทุก slip row บนหน้าเว็บ แปลงเป็น payload สำหรับบันทึกลง Firestore
+// =========================
 function getAllData() {
   const rows = document.querySelectorAll("#slipContainer .slip-items > div");
   let data = [];
@@ -424,7 +447,10 @@ function getZeroPriceSlipNames() {
     .map(slip => slip.dataset.filename || "ไม่ทราบชื่อไฟล์");
 }
 
-// 🔥 SAVE
+// =========================
+// Save flow
+// ตรวจ login/date/ราคา 0/stock ก่อน แล้วค่อยบันทึก slips และลด stock ตาม qty
+// =========================
 let isSaving = false;
 window.saveData = async function () {
 
@@ -530,7 +556,10 @@ window.saveData = async function () {
   }
 };
 
-// 🔥 convert
+// =========================
+// OCR conversion flow
+// อ่านไฟล์รูปจาก input, วาดลง canvas, ส่ง pixel data เข้า OCR, แล้วสร้าง slip card
+// =========================
 window.convert = function (renderRows = true) {
   // แปลงไฟล์ที่เลือกเป็นภาพขาวดำ ส่งเข้า WASM OCR แล้ว render เป็นบิลบนหน้าเว็บ
   // renderRows ยังเผื่อไว้สำหรับอนาคต ถ้าต้องการทดลองอ่านโดยไม่สร้าง UI
@@ -574,12 +603,8 @@ window.convert = function (renderRows = true) {
         const { data } = ctx.getImageData(0, 0, img.width, img.height);
         const final = readPriceWithFallback(data, img.width, img.height, file.name);
 
-        let product = "กาแฟ";
-        if (final >= 0.1 && final < 0.2) product = "น้ำ";
-        else if (final >= 0.2) product = "ขนม";
-
         if (renderRows) {
-          addRow(final.toFixed(2), product, file.name, imageUrl);
+          addRow(final.toFixed(2), file.name, imageUrl);
         } else {
           URL.revokeObjectURL(imageUrl);
         }
@@ -655,7 +680,10 @@ window.processTwice = async function () {
   await convert(true);
 };
 
-// 🔥 Chart instances (keep refs to destroy before redraw)
+// =========================
+// Dashboard chart state
+// เก็บ Chart.js instances เพื่อ destroy/redraw ได้โดยไม่ซ้อนกราฟเก่า
+// =========================
 let chartIncome = null;
 let chartQty = null;
 let chartMode = 'day';
@@ -671,8 +699,10 @@ window.setChartMode = function(mode) {
 let chartProduct = null;
 let chartProfit = null;
 
-// 🔥 Set default date range
-// 🔥 Stock cache
+// =========================
+// Stock dropdown cache
+// โหลดสินค้าเพื่อเติม select ใน slip/manual และใช้ auto-match จากราคา
+// =========================
 let stockList = [];
 
 async function loadStocks() {
@@ -702,7 +732,10 @@ window.refreshStocks = async function() {
   alert("โหลด stock ใหม่แล้ว ✅");
 };
 
-// 🔥 Stock Content — cache + load once
+// =========================
+// Stock details page
+// โหลด stock table, cache ค่าเดิม, แก้ไข stock/cost/selling และบันทึกกลับ Firestore
+// =========================
 let stockCache = null;
 let originalStockCache = null;
 let changeLog = []; // เก็บประวัติการ update พร้อมเวลา
@@ -780,7 +813,6 @@ function renderStockTable(items) {
   container.innerHTML = html;
 }
 
-// 🔥 แสดงการเปลี่ยนแปลงทั้งหมดตั้งแต่โหลดครั้งแรก
 window.showChanges = function() {
   if (changeLog.length === 0) {
     alert("ยังไม่มีการ Update ใดๆ ในเซสชันนี้");
@@ -909,7 +941,10 @@ window.onload = function() {
   loadChartData();
 };
 
-// 🔥 Load chart data from Firestore
+// =========================
+// Dashboard data + charts
+// อ่าน slips ตามช่วงวันที่ แล้วคำนวณรายได้/ต้นทุน/กำไร/จำนวนสินค้า ก่อนวาดกราฟ
+// =========================
 window.loadChartData = async function () {
   const from = document.getElementById("chartFrom").value;
   const to = document.getElementById("chartTo").value;
@@ -1141,7 +1176,10 @@ window.loadChartData = async function () {
   });
 };
 
-// 🔥 Auto-load chart when switching to home tab (if logged in)
+// =========================
+// Tab side effects
+// เวลาเปลี่ยน tab จะโหลด Dashboard หรือ StockDetails ใหม่ตามหน้าที่เปิด
+// =========================
 const _origOpenTab = window.openTab;
 window.openTab = function(id) {
   _origOpenTab(id);
@@ -1153,7 +1191,10 @@ window.openTab = function(id) {
   }
 };
 
-// 🔥 download PGM
+// =========================
+// Debug helper
+// ฟังก์ชันนี้ใช้ export ภาพเป็น PGM สำหรับ debug image processing เท่านั้น
+// =========================
 function convertdown() {
   const file = document.getElementById("imgInput").files[0];
   if (!file) {
@@ -1197,7 +1238,10 @@ function convertdown() {
   };
 }
 
-// 🔥 Load stock options from Firestore
+// =========================
+// Manual modal
+// โหลดสินค้าเข้า modal และเพิ่มรายการ manual โดยไม่ต้องผ่าน OCR
+// =========================
 window.loadStockOptions = async function() {
   const select = document.getElementById("popProduct");
   select.innerHTML = "<option>กำลังโหลด...</option>";
@@ -1217,9 +1261,13 @@ window.loadStockOptions = async function() {
 function saveModal() {
   const price   = document.getElementById('popPrice').value;
   const product = document.getElementById('popProduct').value;
-  const cost    = document.getElementById('popCost').value;
 
-  addRow(price, product, 'manual');         // เพิ่มแถวในตาราง
+  const wrapper = addRow(price, 'manual');  // เพิ่มแถวในตาราง
+  const productSelect = wrapper?.querySelector(".product");
+  if (productSelect) {
+    productSelect.value = product;
+    autoFillCost(productSelect);
+  }
   document.getElementById('myModal').style.display = 'none';
 
   // เคลียร์ค่า

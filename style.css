@@ -1,12 +1,15 @@
+/* Base page style: reset margin และใช้ sans-serif ทั้งเว็บ */
 body {
   margin: 0;
   font-family: sans-serif;
 }
 
+/* Wrapper หลักของหน้า ตอนนี้ใช้ block เพราะ sidebar วางเป็นแถบบนเต็มจอ */
 .layout {
   display: block;
 }
 
+/* Sidebar/Menu ด้านบน: รวมปุ่มเปลี่ยน tab และสถานะ login */
 .sidebar {
   width: 100%;
   box-sizing: border-box;
@@ -18,6 +21,7 @@ body {
   gap: 15px;
 }
 
+/* ปุ่มใน sidebar ให้ขนาดพอดีข้อความ ไม่ยืดเต็มแถว */
 .sidebar button {
   width: auto;
   padding: 10px 20px;
@@ -25,18 +29,22 @@ body {
   cursor: pointer;
 }
 
+/* Content area สำหรับ tab ต่าง ๆ */
 .content {
   padding: 20px;
 }
 
+/* ระบบ tab: ซ่อนทุกหน้าไว้ก่อน */
 .tab {
   display: none;
 }
 
+/* tab ที่ active เท่านั้นถึงจะแสดง */
 .tab.active {
   display: block;
 }
 
+/* Container ของ slip card ที่ main.js render หลัง OCR */
 #slipContainer {
   /* แสดงบิลเป็น 2 คอลัมน์เสมอ และให้เลื่อนแนวนอนถ้าหน้าจอแคบ */
   display: grid;
@@ -46,6 +54,7 @@ body {
   overflow-x: auto;
 }
 
+/* main.js ใส่ margin-top ให้ card เอง แต่ grid ใช้ gap อยู่แล้ว เลย override ให้ spacing ไม่ซ้อน */
 #slipContainer > div {
   margin-top: 0 !important;
 }
