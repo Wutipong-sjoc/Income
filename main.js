@@ -48,11 +48,24 @@ const ADMIN_EMAILS = [ // ← email admin here!
   "wutipongg@gmail.com"
 ];
 
-onAuthStateChanged(auth, (user) => {
+// let ADMIN_EMAILS = [];
+
+// async function loadAdmins() {
+//   const snapshot = await getDocs(collection(db, "admins"));
+//   ADMIN_EMAILS = snapshot.docs.map(doc => doc.id);
+// }
+
+// console.log("โหลดรายชื่อ admin...", ADMIN_EMAILS);
+
+onAuthStateChanged(auth, async (user) => {
+
+  // await loadAdmins();
+
+  const isAdmin = user && ADMIN_EMAILS.includes(user.email);
+
   const loginBtn = document.querySelector('button[onclick="login()"]');
   const logoutBtn = document.querySelector('button[onclick="logout()"]');
 
-  const isAdmin = user && ADMIN_EMAILS.includes(user.email);
 
   if (user) {
     setUserStatus("👤 " + user.email);
@@ -75,7 +88,11 @@ onAuthStateChanged(auth, (user) => {
   if (btnManual) btnManual.style.display = isAdmin ? '' : 'none';
 
   const btnStock = document.getElementById("btnStockDetails");
-  if (btnStock) btnStock.style.display = isAdmin ? 'block' : 'none';
+  // if (btnStock) btnStock.style.display = isAdmin ? 'block' : 'none';
+  if (btnStock) btnStock.style.display = user ? 'block' : 'none';
+
+  const btnregister = document.getElementById('btnregister');
+  if (btnregister) btnregister.style.display = isAdmin ? '' : 'none';
   //------------------------------------------------------------------------------------
 });
 
@@ -92,6 +109,7 @@ window.register = async function () {
 };
 
 window.login = async function () {
+
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
 
