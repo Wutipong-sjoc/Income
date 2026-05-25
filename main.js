@@ -74,6 +74,7 @@ onAuthStateChanged(auth, async (user) => {
 
     //Load stock if already logged in.
     loadStocks();
+    loadChartData();
 
   } else {
     setUserStatus("❌ ยังไม่ login");
