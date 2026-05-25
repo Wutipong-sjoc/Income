@@ -101,7 +101,26 @@
       </div>
 
       <!-- ตรงนี้ main.js จะ render slip card จาก OCR ลงมาแบบ 2 คอลัมน์ -->
-      <div id="slipContainer" style="margin-top:20px;"></div>
+      <!-- <div id="slipContainer" style="margin-top:20px;"></div> -->
+
+      <div class="main-add-layout" style="margin-top:20px;">
+
+        <div id="slipContainer" style="margin-top:20px;"></div>
+
+        <div id="rightPanel" style="margin-top:20px; display:none;">
+
+          <div style="background:#4b5563; color:#f9fafb; font-size:12px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; border-radius:12px; margin-top:16px;">
+            <span>Goods</span>
+
+            <button onclick="showAndAddItem()" style="background:#6b7280; color:white; border:1px solid #565c67; padding:6px 14px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:700;">
+              ➕ เพิ่มสินค้า
+            </button>
+          </div>
+
+          <div id="rightItems" style="display:none;"></div>
+
+        </div>
+      </div>
 
       <!-- Modal สำหรับเพิ่มรายการเองโดยไม่ผ่าน OCR -->
       <div id="myModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:999;">

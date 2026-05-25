@@ -45,16 +45,38 @@ body {
 }
 
 /* Container ของ slip card ที่ main.js render หลัง OCR */
-#slipContainer {
+/* #slipContainer { */
   /* แสดงบิลเป็น 2 คอลัมน์เสมอ และให้เลื่อนแนวนอนถ้าหน้าจอแคบ */
+  /* display: grid; */
+  /* grid-template-columns: repeat(2, minmax(520px, 1fr)); */
+  /* gap: 16px; */
+  /* align-items: start; */
+  /* overflow-x: auto; */
+/* } */
+
+/* main.js ใส่ margin-top ให้ card เอง แต่ grid ใช้ gap อยู่แล้ว เลย override ให้ spacing ไม่ซ้อน */
+/* #slipContainer > div { */
+  /* margin-top: 0 !important; */
+/* } */
+
+.main-add-layout {
   display: grid;
-  grid-template-columns: repeat(2, minmax(520px, 1fr));
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
   align-items: start;
+}
+
+#slipContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   overflow-x: auto;
 }
 
-/* main.js ใส่ margin-top ให้ card เอง แต่ grid ใช้ gap อยู่แล้ว เลย override ให้ spacing ไม่ซ้อน */
-#slipContainer > div {
-  margin-top: 0 !important;
+#rightPanel {
+  /* position: sticky; */
+  display: flex;
+  flex-direction: column;
+  /* top: 16px; */
+  margin-top: 36px;
 }

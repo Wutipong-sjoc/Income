@@ -120,6 +120,12 @@ window.login = async function () {
     document.getElementById("email").value = "";
     document.getElementById("password").value = "";
 
+    // Load stock when login is completed
+    loadStocks();
+
+    //Clear all 
+    clearAllSlips();
+
     // ✅ ไปหน้า Dashboard
     openTab("Dashboard");
 
@@ -184,7 +190,8 @@ function addRow(price, filename, imageUrl = "") {
   wrapper.innerHTML = `
     <div style="background:#4b5563; color:#f9fafb; font-size:12px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center;">
       <span>📄 ${displayFilename}</span>
-      <button onclick="addItemToSlip('${slipId}')" style="background:#6b7280; color:white; border:1px solid #565c67; padding:6px 14px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:700;">➕ เพิ่มสินค้า</button>
+      <!-- <button onclick="addItemToSlip('${slipId}')" style="background:#6b7280; color:white; border:1px solid #565c67; padding:6px 14px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:700;">➕ เพิ่มสินค้า</button> -->
+      <button onclick="deleteSlip('${slipId}')" style="background:#6b7280; color:white; border:1px solid #565c67; padding:6px 14px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:700;">Delete</button>
     </div>
     <div style="${slipBodyStyle}">
       ${imageUrl ? `
@@ -201,11 +208,10 @@ function addRow(price, filename, imageUrl = "") {
             <div class="price-warning" style="display:none; margin-top:8px; color:#9f1239; font-size:12px; font-weight:700;">OCR อ่านราคาไม่ได้ กรุณากรอกราคาเอง</div>
           </div>
         </div>
-        <div class="slip-items"></div>
+        <!-- <div class="slip-items"></div> -->
       </div>
     </div>
   `;
-
   container.appendChild(wrapper);
 
   // ใส่ราคา OCR และเช็กทันที ถ้าเป็น 0 จะขึ้นเตือนให้กรอกเอง
@@ -215,9 +221,20 @@ function addRow(price, filename, imageUrl = "") {
     handleBillPriceInput(billPriceInput);
   }
 
-  addItemToSlip(slipId);
+  // addItemToSlip(slipId);
   return wrapper;
 }
+
+window.deleteSlip = function(slipId) {
+
+  const wrapper = document.querySelector(`[data-slip="${slipId}"]`);
+  if (!wrapper) return;
+
+  revokeSlipPreviewUrl(wrapper);
+
+  wrapper.remove();
+
+};
 
 function escapeHtml(value) {
   // กันชื่อไฟล์ที่มีอักขระพิเศษทำให้ HTML เพี้ยน
@@ -267,31 +284,35 @@ window.autoMatchBill = function(priceInput) {
 
 // =========================
 // Slip item rows
-// ภายในหนึ่งบิลสามารถมีหลายสินค้าได้ แต่ใช้ราคาบิลเดียวร่วมกัน
 // =========================
-window.addItemToSlip = function(slipId) {
-  const wrapper = document.querySelector(`[data-slip="${slipId}"]`);
-  if (!wrapper) return;
-
-  const itemsContainer = wrapper.querySelector(".slip-items");
+window.addItemToSlip = function() {
+  const itemsContainer = document.getElementById("rightItems"); if (!itemsContainer) return;
   const row = document.createElement("div");
-  row.style.cssText = "display:flex; gap:10px; padding:10px; background:#f8f9fb; border-top:1px solid #e3e6eb;";
-
+  row.style.cssText = "display:flex; gap:10px; padding:12px; margin-top:16px; background:#2b2b2b; border-radius:12px;";
   row.innerHTML = `
     <div style="flex:1.5; background:#eceff3; color:#374151; padding:12px; text-align:center; border-radius:12px; border:1px solid #d7dbe2; font-weight:700;">
       สินค้า<br>
       <select class="product" style="width:90%; margin-top:6px; height:40px; border-radius:10px; border:1px solid #d1d5db; background:#ffffff; padding:0 12px; color:#2f3437; box-sizing:border-box;"></select>
     </div>
+
     <div style="flex:0.6; background:#eceff3; color:#374151; padding:12px; text-align:center; border-radius:12px; border:1px solid #d7dbe2; font-weight:700;">
       จำนวน<br>
       <input type="number" class="qty" value="1" min="1" style="width:90%; margin-top:6px; height:40px; border-radius:10px; border:1px solid #d1d5db; background:#ffffff; padding:0 12px; color:#2f3437; box-sizing:border-box;">
     </div>
-    <button onclick="removeItem(this)"
-      style="align-self:center; background:#f3f4f6; border:1px solid #d1d5db; color:#8b1e1e; width:42px; height:42px; border-radius:10px; font-size:22px; cursor:pointer;">x</button>
-  `;
 
+    <button onclick="removeItem(this)" style="align-self:center; background:#f3f4f6; border:1px solid #d1d5db; color:#8b1e1e; width:42px; height:42px; border-radius:10px; font-size:22px; cursor:pointer;">x</button>
+  `;
   itemsContainer.appendChild(row);
   fillSelect(row.querySelector(".product"));
+};
+
+window.showAndAddItem = function() {
+  const rightItems = document.getElementById("rightItems");
+  if (rightItems) {
+    rightItems.style.display = "block";
+  }
+
+  addItemToSlip();
 };
 
 window.removeItem = function(button) {
@@ -319,6 +340,17 @@ window.clearAllSlips = function() {
   const popCost = document.getElementById("popCost");
   if (popPrice) popPrice.value = "";
   if (popCost) popCost.value = "";
+
+  // ซ่อน Goods panel
+  const rightPanel = document.getElementById("rightPanel");
+  const rightItems = document.getElementById("rightItems");
+
+  if (rightPanel) rightPanel.style.display = "none";
+  if (rightItems) {
+    rightItems.innerHTML = "";
+    rightItems.style.display = "none";
+  }
+
 };
 
 function clearSlipContainer() {
@@ -434,27 +466,33 @@ window.autoFillCost = function(selectEl) {
 // อ่านทุก slip row บนหน้าเว็บ แปลงเป็น payload สำหรับบันทึกลง Firestore
 // =========================
 function getAllData() {
-  const rows = document.querySelectorAll("#slipContainer .slip-items > div");
-  let data = [];
-  rows.forEach(row => {
-    const slip    = row.closest("[data-slip]");
-    const price   = slip?.querySelector(".bill-price")?.value || 0;
-    const product = row.querySelector(".product")?.value || "";
-    const qty     = Number(row.querySelector(".qty")?.value || 1);
 
-    // ✅ ข้าม row ที่ไม่ได้เลือกสินค้า, qty เป็น 0, หรือ WASM อ่านราคาไม่ได้ (price = 0)
-    if (!product || qty <= 0 || Number(price) <= 0) return;
+  const rows = document.querySelectorAll("#rightItems > div");
+  let data = [];
+
+  rows.forEach(row => {
+
+    const product = row.querySelector(".product")?.value || "";
+    const qty = Number(row.querySelector(".qty")?.value || 1);
+
+    // เอาราคาจาก slip แรก
+    const firstSlip = document.querySelector("#slipContainer [data-slip]");
+    const price = Number(firstSlip?.querySelector(".bill-price")?.value || 0);
+
+    if (!product || qty <= 0 || price <= 0) return;
 
     const stockItem = stockList.find(s => s.id === product);
     const stockCost = stockItem?.cost || 0;
 
     data.push({
-      price:   Number(price),
+      price: price,
       product: product,
-      qty:     qty,
-      cost:    stockCost * qty,
+      qty: qty,
+      cost: stockCost * qty,
     });
+
   });
+
   return data;
 }
 
@@ -689,13 +727,20 @@ function runOcrAtThreshold(imageData, width, height, threshold) {
 }
 
 window.processTwice = async function () {
-  // ล้าง UI ก่อน process แต่ไม่ล้างไฟล์ที่เลือกไว้
+
   clearSlipContainer();
   clearCostRows();
 
-  // ตอนนี้มี fallback threshold แล้ว จึงรัน OCR แค่รอบเดียวต่อการกด Process
+  // ซ่อนก่อน process
+  document.getElementById("rightPanel").style.display = "none";
+  document.getElementById("rightItems").innerHTML = "";
+
   console.log("RUN OCR");
   await convert(true);
+
+  // process เสร็จค่อย show
+  document.getElementById("rightPanel").style.display = "block";
+
 };
 
 // =========================
@@ -953,10 +998,12 @@ window.onload = function() {
   document.getElementById("chartTo").value = today.toISOString().split("T")[0];
   clearCostRows();
 
-  // โหลด stock ครั้งเดียว
-  loadStocks();
-  // โหลด chart
-  loadChartData();
+  if(login == true){
+    // โหลด stock ครั้งเดียว
+    loadStocks();
+    // โหลด chart
+    loadChartData();
+  }
 };
 
 // =========================
