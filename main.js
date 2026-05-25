@@ -71,6 +71,10 @@ onAuthStateChanged(auth, async (user) => {
     setUserStatus("👤 " + user.email);
     if (loginBtn) loginBtn.style.display = "none";
     if (logoutBtn) logoutBtn.style.display = "block";
+
+    //Load stock if already logged in.
+    loadStocks();
+
   } else {
     setUserStatus("❌ ยังไม่ login");
     if (loginBtn) loginBtn.style.display = "block";
@@ -998,7 +1002,7 @@ window.onload = function() {
   document.getElementById("chartTo").value = today.toISOString().split("T")[0];
   clearCostRows();
 
-  if(login == true){
+  if((auth.currentUser)){
     // โหลด stock ครั้งเดียว
     loadStocks();
     // โหลด chart
