@@ -1374,26 +1374,14 @@ window.saveModal = async function() {
     // save goods
     // =========================
     for (const row of rows) {
-
-      const product =
-        row.querySelector(".modal-product")?.value || "";
-
-      const qty =
-        Number(
-          row.querySelector(".modal-qty")?.value || 1
-        );
-
-      const price =
-        Number(
-          row.querySelector(".modal-price")?.value || 0
-        );
+      const product = row.querySelector(".modal-product")?.value || "";
+      const qty = Number(row.querySelector(".modal-qty")?.value || 1);
+      const price = Number(row.querySelector(".modal-price")?.value || 0);
 
       // ✅ ดึง cost จาก stock
-      const stock =
-        stockList.find(s => s.id === product);
+      const stock = stockList.find(s => s.id === product);
 
-      const cost =
-        Number(stock?.cost || 0) * qty;
+      const cost = Number(stock?.cost || 0) * qty;
 
       // ✅ custom document id
       const docId =
@@ -1423,20 +1411,11 @@ window.saveModal = async function() {
       // ลด stock
       // =========================
       if (product && qty > 0) {
-
         try {
-
-          const stockRef =
-            doc(db, "stocks", product);
-
-          const stockSnap =
-            await getDoc(stockRef);
-
+          const stockRef =doc(db, "stocks", product);
+          const stockSnap = await getDoc(stockRef);
           if (stockSnap.exists()) {
-
-            const currentStock =
-              stockSnap.data().stock || 0;
-
+            const currentStock = stockSnap.data().stock || 0;
             await updateDoc(stockRef, {
               stock:
                 Math.max(
@@ -1444,22 +1423,15 @@ window.saveModal = async function() {
                   currentStock - qty
                 )
             });
-
             stockCache = null;
-
           }
-
         } catch (stockErr) {
-
           console.warn(
             "ลด stock ไม่สำเร็จ:",
             stockErr.message
           );
-
         }
-
       }
-
     }
 
     // =========================
