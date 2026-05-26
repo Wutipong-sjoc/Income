@@ -603,7 +603,7 @@ window.saveData = async function () {
       }
     }
 
-    // ✅ save globalCost แบบ append ไม่ override
+    // ✅ save globalCost แบบ append
     const oldSnap = await getDoc(doc(db, "slips", date));
 
     const oldData = oldSnap.exists()
