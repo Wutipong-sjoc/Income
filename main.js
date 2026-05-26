@@ -1351,22 +1351,186 @@ window.loadStockOptions = async function() {
   });
 };
 
-function saveModal() {
-  const price   = document.getElementById('popPrice').value;
-  const product = document.getElementById('popProduct').value;
+window.saveModal = async function() {
 
-  const wrapper = addRow(price, 'manual');  // เพิ่มแถวในตาราง
-  const productSelect = wrapper?.querySelector(".product");
-  if (productSelect) {
-    productSelect.value = product;
-    autoFillCost(productSelect);
+  try {
+
+    const date =
+      document.getElementById("popDate").value;
+
+    if (!date) {
+      alert("เลือกวันที่ก่อน");
+      return;
+    }
+
+      const rows = document.querySelectorAll(".modal-goods-row");
+
+    if (rows.length === 0) {
+      alert("ไม่มีสินค้า");
+      return;
+    }
+
+    // =========================
+    // save goods
+    // =========================
+    for (const row of rows) {
+
+      const product =
+        row.querySelector(".modal-product")?.value || "";
+
+      const qty =
+        Number(
+          row.querySelector(".modal-qty")?.value || 1
+        );
+
+      const price =
+        Number(
+          row.querySelector(".modal-price")?.value || 0
+        );
+
+      // ✅ ดึง cost จาก stock
+      const stock =
+        stockList.find(s => s.id === product);
+
+      const cost =
+        Number(stock?.cost || 0) * qty;
+
+      // ✅ custom document id
+      const docId =
+        `manual-${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2,7)}`;
+
+      await setDoc(
+        doc(db, "slips", date, "items", docId),
+        {
+          product,
+          qty,
+          price,
+          cost,
+          source: "manual",
+          createdAt: new Date(),
+
+          userId:
+            auth.currentUser?.uid || "",
+
+          email:
+            auth.currentUser?.email || ""
+        }
+      );
+
+      // =========================
+      // ลด stock
+      // =========================
+      if (product && qty > 0) {
+
+        try {
+
+          const stockRef =
+            doc(db, "stocks", product);
+
+          const stockSnap =
+            await getDoc(stockRef);
+
+          if (stockSnap.exists()) {
+
+            const currentStock =
+              stockSnap.data().stock || 0;
+
+            await updateDoc(stockRef, {
+              stock:
+                Math.max(
+                  0,
+                  currentStock - qty
+                )
+            });
+
+            stockCache = null;
+
+          }
+
+        } catch (stockErr) {
+
+          console.warn(
+            "ลด stock ไม่สำเร็จ:",
+            stockErr.message
+          );
+
+        }
+
+      }
+
+    }
+
+    // =========================
+    // save globalCost
+    // =========================
+    const oldSnap =
+      await getDoc(doc(db, "slips", date));
+
+    const oldData =
+      oldSnap.exists()
+        ? oldSnap.data().costBreakdown || []
+        : [];
+
+    // ดึง cost จาก modal
+    const newData = Array.from(
+      document.querySelectorAll(
+        "#modalCostContainer > div"
+      )
+    ).map(row => ({
+
+      type:
+        row.querySelector(".modal-cost-name")
+          ?.value || "",
+
+      amount: Number(
+        row.querySelector(".modal-cost-price")
+          ?.value || 0
+      )
+
+    }));
+
+    // รวมของเก่า + ใหม่
+    const merged = [
+      ...oldData,
+      ...newData
+    ];
+
+    // คำนวณ globalCost
+    const globalCost =
+      merged.reduce(
+        (sum, x) =>
+          sum + Number(x.amount || 0),
+        0
+      );
+
+    // save meta
+    await setDoc(
+      doc(db, "slips", date),
+      {
+        globalCost,
+        costBreakdown: merged
+      },
+      { merge: true }
+    );
+
+    alert("บันทึก Manual สำเร็จ");
+
+    document.getElementById("myModal")
+      .style.display = "none";
+
+  } catch (e) {
+
+    console.error(e);
+
+    alert(
+      "error: " + e.message
+    );
+
   }
-  document.getElementById('myModal').style.display = 'none';
 
-  // เคลียร์ค่า
-  document.getElementById('popPrice').value = '';
-  document.getElementById('popCost').value  = '';
-}
+};
 
 window.addModalCostRow = function(type = "packaging", amount = "") {
 
@@ -1402,20 +1566,21 @@ window.addModalGoodsRow = function() {
   if (!container) return;
 
   const row = document.createElement("div");
+  row.className = "modal-goods-row";
 
   row.style.cssText =
     "display:flex; gap:12px; align-items:center; margin-top:12px;";
 
   row.innerHTML = `
   <div style="display:flex; gap:12px; width:100%;">
-    <select class="modal-product"
+    <select class="modal-product" onchange="autoFillModalPrice(this)"
       style="flex:1.2; min-width:0; height:48px; padding:0 14px; border-radius:10px; border:1px solid #333; background:#111; color:white; box-sizing:border-box;">
     </select>
 
-    <input type="number" placeholder="ราคา"
+    <input type="number" class="modal-price" placeholder="ราคา"
       style="flex:0.7; min-width:0; height:48px; padding:0 14px; border-radius:10px; border:1px solid #333; background:#111; color:white; box-sizing:border-box;">
 
-    <input type="number" placeholder="จำนวนสินค้าที่ขายได้" 
+    <input class="modal-qty" type="number" placeholder="จำนวนสินค้าที่ขายได้" 
       style=" flex:0.8; min-width:0; height:48px; padding:0 14px; border-radius:10px; border:1px solid #333; background:#111; color:white; box-sizing:border-box;">
   </div>
 
@@ -1427,5 +1592,26 @@ window.addModalGoodsRow = function() {
 `;
 
   container.appendChild(row);
-  fillSelect(row.querySelector(".modal-product"));
+
+  const select = row.querySelector(".modal-product");
+
+  fillSelect(select);
+
+  // auto fill ทันทีหลังโหลด option
+  autoFillModalPrice(select);
+  
 }
+
+window.autoFillModalPrice = function(selectEl) {
+
+  const stock = stockList.find(s => s.id === selectEl.value);
+  if (!stock) return;
+
+  const row = selectEl.closest("div[style*='display:flex']");
+  if (!row) return;
+
+  const priceInput = row.querySelector(".modal-price");
+  if (!priceInput) return;
+
+  priceInput.value = stock.selling || 0;
+};
