@@ -603,10 +603,32 @@ window.saveData = async function () {
       }
     }
 
-    // ✅ save globalCost แยกใน slips/{date} (overwrite ทุกครั้ง)
-    const globalCost = getGlobalCostTotal();
-    const costBreakdown = getCostBreakdown();
-    await setDoc(doc(db, "slips", date), { globalCost, costBreakdown }, { merge: true });
+    // ✅ save globalCost แบบ append ไม่ override
+    const oldSnap = await getDoc(doc(db, "slips", date));
+
+    const oldData = oldSnap.exists()
+      ? oldSnap.data().costBreakdown || []
+      : [];
+
+    const newData = getCostBreakdown();
+
+    // รวมของเก่า + ใหม่
+    const merged = [...oldData, ...newData];
+
+    // คำนวณ globalCost ใหม่ทั้งหมด
+    const globalCost = merged.reduce(
+      (sum, x) => sum + Number(x.amount || 0),
+      0
+    );
+
+    await setDoc(
+      doc(db, "slips", date),
+      {
+        globalCost,
+        costBreakdown: merged
+      },
+      { merge: true }
+    );
 
     alert("บันทึกสำเร็จ");
   } catch (e) {
