@@ -999,6 +999,7 @@ window.onload = function() {
   from.setDate(today.getDate() - 7);
 
   document.getElementById("dateInput").value = today.toISOString().split("T")[0];
+   document.getElementById("popDate").value = today.toISOString().split("T")[0];
   document.getElementById("chartFrom").value = from.toISOString().split("T")[0];
   document.getElementById("chartTo").value = today.toISOString().split("T")[0];
   clearCostRows();
@@ -1343,4 +1344,66 @@ function saveModal() {
   // เคลียร์ค่า
   document.getElementById('popPrice').value = '';
   document.getElementById('popCost').value  = '';
+}
+
+window.addModalCostRow = function(type = "packaging", amount = "") {
+
+  const container = document.getElementById("modalCostContainer");
+  if (!container) return;
+
+  const row = document.createElement("div");
+
+  row.style.cssText =
+    "display:flex; gap:12px; align-items:center; margin-top:12px;";
+
+  row.innerHTML = `
+    <select class="modal-cost-name" style="width:200px; height:40px; border-radius:10px; border:1px solid #333; background:#111; color:white; padding:0 12px;">
+      ${createCostOptions(type)}
+    </select>
+
+    <input type="number" class="modal-cost-price" placeholder="ราคา" value="${amount}"
+      style="width:120px; height:40px; border-radius:10px; border:1px solid #333; background:#111; color:white; padding:0 12px;">
+
+    <button
+      onclick="this.parentElement.remove()"
+      style="width:40px; height:40px; border-radius:10px; border:1px solid #444; background:#222; color:#ff6b6b; cursor:pointer;">
+      x
+    </button>
+  `;
+
+  container.appendChild(row);
+}
+
+window.addModalGoodsRow = function() {
+
+  const container = document.getElementById("modalGoodsContainer");
+  if (!container) return;
+
+  const row = document.createElement("div");
+
+  row.style.cssText =
+    "display:flex; gap:12px; align-items:center; margin-top:12px;";
+
+  row.innerHTML = `
+  <div style="display:flex; gap:12px; width:100%;">
+    <select class="modal-product"
+      style="flex:1.2; min-width:0; height:48px; padding:0 14px; border-radius:10px; border:1px solid #333; background:#111; color:white; box-sizing:border-box;">
+    </select>
+
+    <input type="number" placeholder="ราคา"
+      style="flex:0.7; min-width:0; height:48px; padding:0 14px; border-radius:10px; border:1px solid #333; background:#111; color:white; box-sizing:border-box;">
+
+    <input type="number" placeholder="จำนวนสินค้าที่ขายได้" 
+      style=" flex:0.8; min-width:0; height:48px; padding:0 14px; border-radius:10px; border:1px solid #333; background:#111; color:white; box-sizing:border-box;">
+  </div>
+
+    <button
+      onclick="this.parentElement.remove()"
+      style="width:40px; height:40px; border-radius:10px; border:1px solid #444; background:#222; color:#ff6b6b; cursor:pointer;">
+      x
+    </button>
+`;
+
+  container.appendChild(row);
+  fillSelect(row.querySelector(".modal-product"));
 }

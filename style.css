@@ -80,3 +80,41 @@ body {
   /* top: 16px; */
   margin-top: 36px;
 }
+
+.main-modal-layout {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  align-items: center;
+}
+
+.main-modal-layout > div {
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .main-modal-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+#ModalleftPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-x: auto;
+}
+
+#ModalmidPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-x: auto;
+}
+
+#ModalrightPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-x: auto;
+}
