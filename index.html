@@ -72,6 +72,7 @@
         <h3 style="color:#aaa; margin:0 0 16px 0; font-size:14px;">📦 จำนวนสินค้าที่ขายได้ รายวัน</h3>
         <canvas id="qtyChart" height="100"></canvas>
       </div>
+
     </div>
 
     <!-- Add: หน้าเพิ่มข้อมูลจากรูปสลิป, OCR, ต้นทุนรวม, และบันทึกข้อมูล -->
@@ -113,6 +114,30 @@
             </button>
           </div>
           <div id="rightItems" style="display:none;"></div>
+        </div>
+      </div>
+
+      <div style="margin-top:24px; background:#111; border-radius:12px; padding:20px;">
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:16px;">
+          <h3 style="color:#aaa; margin:0; font-size:14px;">🛠️ แก้ข้อมูลที่บันทึกแล้ว</h3>
+          <input type="date" id="editDateInput">
+          <button onclick="loadSavedDataForEdit()">โหลดข้อมูล</button>
+          <button onclick="addSavedEditItem()" style="background:#1e5f7a; color:white;">+ เพิ่มสินค้า</button>
+          <button onclick="addSavedEditCostRow()" style="background:#5f6368; color:white;">+ เพิ่มต้นทุน</button>
+          <button onclick="saveSavedDataEdits()" style="background:#1e7a4a; color:white;">💾 Save changes</button>
+        </div>
+        <div id="editSavedStatus" style="margin-bottom:12px; color:#888; font-size:13px;">เลือกวันที่แล้วกดโหลดข้อมูล</div>
+        <div style="margin-top:12px;">
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+            <label style="font-size:16px; color:#aaa; font-weight:bold;">💰 ต้นทุนรวมของวันที่เลือก:</label>
+          </div>
+          <div id="editSavedCostRows" style="display:flex; flex-direction:column; gap:12px;"></div>
+        </div>
+        <div style="margin-top:20px;">
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+            <label style="font-size:16px; color:#aaa; font-weight:bold;">📦 รายการสินค้าที่บันทึกไว้:</label>
+          </div>
+          <div id="editSavedItems" style="display:flex; flex-direction:column; gap:12px;"></div>
         </div>
       </div>
 

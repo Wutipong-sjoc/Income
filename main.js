@@ -4,7 +4,7 @@
 // =========================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
 import {
-  getFirestore, collection, addDoc, getDocs, updateDoc, setDoc, doc, getDoc
+  getFirestore, collection, addDoc, getDocs, updateDoc, setDoc, doc, getDoc, deleteDoc
 } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
 import { 
@@ -44,9 +44,22 @@ function setUserStatus(text) {
   if (side) side.innerText = text;
 }
 
-const ADMIN_EMAILS = [ // ← email admin here!
-  "wutipongg@gmail.com"
-];
+let ADMIN_EMAILS = [];
+
+async function loadAdmins() {
+  try {
+    const snapshot = await getDocs(collection(db, "admins"));
+    ADMIN_EMAILS = snapshot.docs
+      .map(adminDoc => {
+        const data = adminDoc.data() || {};
+        return String(data.email || adminDoc.id || "").trim().toLowerCase();
+      })
+      .filter(Boolean);
+  } catch (error) {
+    console.warn("loadAdmins failed:", error.message);
+    ADMIN_EMAILS = [];
+  }
+}
 
 // let ADMIN_EMAILS = [];
 
@@ -59,9 +72,10 @@ const ADMIN_EMAILS = [ // ← email admin here!
 
 onAuthStateChanged(auth, async (user) => {
 
-  // await loadAdmins();
+  await loadAdmins();
 
-  const isAdmin = user && ADMIN_EMAILS.includes(user.email);
+  const userEmail = String(user?.email || "").trim().toLowerCase();
+  const isAdmin = Boolean(user && ADMIN_EMAILS.includes(userEmail));
 
   const loginBtn = document.querySelector('button[onclick="login()"]');
   const logoutBtn = document.querySelector('button[onclick="logout()"]');
@@ -523,16 +537,21 @@ window.saveData = async function () {
 
   if (!auth.currentUser) {
     alert("กรุณา login ก่อน");
+    isSaving = false;
     return;
   }
 
   const data = getAllData();
+  const newData = getCostBreakdown();
   console.log("📦 data ทั้งหมดที่จะ save:", JSON.stringify(data, null, 2));
   console.log("📦 จำนวน items:", data.length);
   const date = document.getElementById("dateInput").value;
   const zeroPriceSlipNames = getZeroPriceSlipNames();
 
-  if (!date) return alert("เลือกวันที่ก่อน");
+  if (!date) {
+    isSaving = false;
+    return alert("เลือกวันที่ก่อน");
+  }
   if (zeroPriceSlipNames.length > 0) {
     alert("มีบิลที่ OCR อ่านราคาไม่ได้ กรุณากรอกราคาเองก่อน Save:\n" + zeroPriceSlipNames.join("\n"));
     const firstZeroPriceInput = Array.from(document.querySelectorAll("#slipContainer .bill-price"))
@@ -542,7 +561,10 @@ window.saveData = async function () {
     isSaving = false;
     return;
   }
-  if (data.length === 0) return alert("ไม่มีข้อมูล");
+  if (data.length === 0 && newData.length === 0) {
+    isSaving = false;
+    return alert("ไม่มีข้อมูล");
+  }
 
   // ✅ ตรวจ stock ก่อน save ทุก item
   try {
@@ -609,8 +631,6 @@ window.saveData = async function () {
     const oldData = oldSnap.exists()
       ? oldSnap.data().costBreakdown || []
       : [];
-
-    const newData = getCostBreakdown();
 
     // รวมของเก่า + ใหม่
     const merged = [...oldData, ...newData];
@@ -794,16 +814,48 @@ let chartProfit = null;
 // โหลดสินค้าเพื่อเติม select ใน slip/manual และใช้ auto-match จากราคา
 // =========================
 let stockList = [];
+let stocksRequestPromise = null;
+
+async function fetchStocks(force = false) {
+  if (!force && stockCache) {
+    return stockCache;
+  }
+
+  if (!force && stocksRequestPromise) {
+    return stocksRequestPromise;
+  }
+
+  stocksRequestPromise = (async () => {
+    const snapshot = await getDocs(collection(db, "stocks"));
+    const items = [];
+
+    snapshot.forEach(stockDoc => {
+      items.push({ id: stockDoc.id, ...stockDoc.data() });
+    });
+
+    stockCache = items;
+    originalStockCache = JSON.parse(JSON.stringify(items));
+    stockList = items.map(item => ({
+      id: item.id,
+      name: item.id.replace(/_/g, ' '),
+      selling: item.selling || 0,
+      cost: item.cost || 0,
+      stock: item.stock || 0
+    }));
+
+    fillSelect(document.getElementById("popProduct"));
+    return items;
+  })();
+
+  try {
+    return await stocksRequestPromise;
+  } finally {
+    stocksRequestPromise = null;
+  }
+}
 
 async function loadStocks() {
-  const snapshot = await getDocs(collection(db, "stocks"));
-  stockList = [];
-  snapshot.forEach(doc => {
-    const d = doc.data();
-    stockList.push({ id: doc.id, name: doc.id.replace(/_/g, ' '), selling: d.selling || 0, cost: d.cost || 0 });
-  });
-  // fill Modal select ด้วย
-  fillSelect(document.getElementById("popProduct"));
+  await fetchStocks();
 }
 
 function fillSelect(selectEl) {
@@ -817,8 +869,16 @@ function fillSelect(selectEl) {
   });
 }
 
+function createProductOptionsMarkup(selected = "") {
+  return stockList.map(item => `
+    <option value="${item.id}" ${item.id === selected ? "selected" : ""}>
+      ${item.name}
+    </option>
+  `).join("");
+}
+
 window.refreshStocks = async function() {
-  await loadStocks();
+  await fetchStocks(true);
   alert("โหลด stock ใหม่แล้ว ✅");
 };
 
@@ -838,31 +898,23 @@ async function loadStockContent() {
   await fetchAndRenderStock();
 }
 
-async function fetchAndRenderStock() {
-  const snapshot = await getDocs(collection(db, "stocks"));
-  stockCache = [];
-  snapshot.forEach(d => {
-    stockCache.push({ id: d.id, ...d.data() });
-  });
-  // เก็บ snapshot ต้นฉบับ deep copy
-  originalStockCache = JSON.parse(JSON.stringify(stockCache));
-  renderStockTable(stockCache);
+async function fetchAndRenderStock(force = false) {
+  const items = await fetchStocks(force);
+  renderStockTable(items);
 }
 
 function renderStockTable(items) {
   const container = document.getElementById("stockTableContainer");
   if (!container) return;
 
-  if (items.length === 0) {
-    container.innerHTML = "<p style='color:#aaa;'>ไม่มีข้อมูล stock</p>";
-    return;
-  }
-
   // const keys = ['stock', 'cost', 'selling'];
   const keys = ['selling','cost', 'stock'];
 
   let html = `
     <div style="margin-bottom:16px; display:flex; gap:12px; flex-wrap:wrap;">
+      <button onclick="toggleAddStockForm()" style="background:#6b7280; color:white; border:none; padding:8px 18px; border-radius:8px; cursor:pointer; font-size:13px;">
+        ➕ Add stock
+      </button>
       <button onclick="showChanges()" style="background:#7a6f1e; color:white; border:none; padding:8px 18px; border-radius:8px; cursor:pointer; font-size:13px;">
         🔍 ดูการเปลี่ยนแปลง
       </button>
@@ -870,6 +922,37 @@ function renderStockTable(items) {
         💾 Update all
       </button>
     </div>
+    <div id="addStockForm" style="display:none; margin-bottom:16px; padding:16px; border:1px solid #333; border-radius:10px; background:#171717;">
+      <div style="display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:12px; align-items:end;">
+        <div>
+          <label style="display:block; color:#aaa; font-size:12px; margin-bottom:6px;">ชื่อสินค้าใหม่</label>
+          <input id="newStockId" type="text" placeholder="เช่น GG(สีทอง)30inch" style="width:100%; background:#222; border:1px solid #444; color:white; padding:10px; border-radius:8px; box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="display:block; color:#aaa; font-size:12px; margin-bottom:6px;">selling</label>
+          <input id="newStockSelling" type="number" placeholder="0" style="width:100%; background:#222; border:1px solid #444; color:white; padding:10px; border-radius:8px; box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="display:block; color:#aaa; font-size:12px; margin-bottom:6px;">cost</label>
+          <input id="newStockCost" type="number" placeholder="0" style="width:100%; background:#222; border:1px solid #444; color:white; padding:10px; border-radius:8px; box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="display:block; color:#aaa; font-size:12px; margin-bottom:6px;">stock</label>
+          <input id="newStockQty" type="number" placeholder="0" style="width:100%; background:#222; border:1px solid #444; color:white; padding:10px; border-radius:8px; box-sizing:border-box;">
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:12px;">
+        <button onclick="toggleAddStockForm(false)" style="background:#444; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer;">ยกเลิก</button>
+        <button onclick="addStock()" style="background:#1e7a4a; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer;">บันทึกสินค้าใหม่</button>
+      </div>
+    </div>`;
+
+  if (items.length === 0) {
+    container.innerHTML = html + "<p style='color:#aaa;'>ไม่มีข้อมูล stock</p>";
+    return;
+  }
+
+  html += `
     <table style="width:100%; border-collapse:collapse; font-size:14px;">
     <thead>
       <tr style="background:#1e5f7a; color:white;">
@@ -916,6 +999,70 @@ window.showChanges = function() {
   alert(msg);
 };
 
+window.toggleAddStockForm = function(force) {
+  const form = document.getElementById("addStockForm");
+  if (!form) return;
+
+  const shouldShow = typeof force === "boolean"
+    ? force
+    : form.style.display === "none" || form.style.display === "";
+
+  form.style.display = shouldShow ? "block" : "none";
+
+  if (!shouldShow) {
+    const idInput = document.getElementById("newStockId");
+    const sellingInput = document.getElementById("newStockSelling");
+    const costInput = document.getElementById("newStockCost");
+    const qtyInput = document.getElementById("newStockQty");
+    if (idInput) idInput.value = "";
+    if (sellingInput) sellingInput.value = "";
+    if (costInput) costInput.value = "";
+    if (qtyInput) qtyInput.value = "";
+  }
+};
+
+window.addStock = async function() {
+  const idInput = document.getElementById("newStockId");
+  const sellingInput = document.getElementById("newStockSelling");
+  const costInput = document.getElementById("newStockCost");
+  const qtyInput = document.getElementById("newStockQty");
+
+  const rawId = idInput?.value?.trim() || "";
+  const selling = Number(sellingInput?.value || 0);
+  const cost = Number(costInput?.value || 0);
+  const stock = Number(qtyInput?.value || 0);
+
+  if (!rawId) {
+    alert("กรุณาใส่ชื่อสินค้าใหม่");
+    return;
+  }
+
+  const docId = rawId.replace(/\s+/g, "_");
+
+  try {
+    const stockRef = doc(db, "stocks", docId);
+    const stockSnap = await getDoc(stockRef);
+    if (stockSnap.exists()) {
+      alert(`มีสินค้า "${docId}" อยู่แล้ว`);
+      return;
+    }
+
+    await setDoc(stockRef, {
+      selling,
+      cost,
+      stock,
+    });
+
+    stockCache = null;
+    await fetchStocks(true);
+    await fetchAndRenderStock();
+    toggleAddStockForm(false);
+    alert(`เพิ่มสินค้า ${docId} สำเร็จ`);
+  } catch (e) {
+    alert("❌ error: " + e.message);
+  }
+};
+
 window.updateStock = async function(docId) {
   const inputs = document.querySelectorAll(`input[data-id="${docId}"]`);
   const updateData = {};
@@ -948,7 +1095,7 @@ window.updateStock = async function(docId) {
 
     await updateDoc(doc(db, "stocks", docId), updateData);
     stockCache = null;
-    await fetchAndRenderStock();
+    await fetchAndRenderStock(true);
     alert(`✅ อัปเดต ${docId} สำเร็จ`);
   } catch (e) {
     alert("❌ error: " + e.message);
@@ -1008,7 +1155,7 @@ window.updateAllStocks = async function() {
     );
 
     stockCache = null;
-    await fetchAndRenderStock();
+    await fetchAndRenderStock(true);
     alert(`✅ Update all สำเร็จ ${updates.length} รายการ`);
   } catch (e) {
     alert("❌ error: " + e.message);
@@ -1021,7 +1168,8 @@ window.onload = function() {
   from.setDate(today.getDate() - 7);
 
   document.getElementById("dateInput").value = today.toISOString().split("T")[0];
-   document.getElementById("popDate").value = today.toISOString().split("T")[0];
+  document.getElementById("popDate").value = today.toISOString().split("T")[0];
+  document.getElementById("editDateInput").value = today.toISOString().split("T")[0];
   document.getElementById("chartFrom").value = from.toISOString().split("T")[0];
   document.getElementById("chartTo").value = today.toISOString().split("T")[0];
   clearCostRows();
@@ -1062,38 +1210,47 @@ window.loadChartData = async function () {
   const daily = {}; // { date: { revenue, cost, qty: {product: count} } }
   const productMap = {}; // { productName: totalRevenue }
 
-  for (const date of dates) {
-    try {
-      const snapshot = await getDocs(collection(db, "slips", date, "items"));
-      if (!daily[date]) daily[date] = { revenue: 0, cost: 0, qty: {} };
-
-      snapshot.forEach(doc => {
-        const d = doc.data();
-
-        const price = Number(d.price) || 0;
-        const cost = Number(d.cost) || 0;
-        const qty = Number(d.qty) || 1;
-        const product = d.product || "อื่นๆ";
-
-        daily[date].revenue += price;
-        daily[date].cost += cost;
-        daily[date].qty[product] = (daily[date].qty[product] || 0) + qty;
-
-        productMap[product] = (productMap[product] || 0) + price;
-      });
-
-      // ✅ บวก globalCost ของวันนั้นเพิ่ม
+  const dailyEntries = await Promise.all(
+    dates.map(async (date) => {
       try {
-        const metaSnap = await getDoc(doc(db, "slips", date));
-        if (metaSnap.exists()) {
-          daily[date].cost += Number(metaSnap.data().globalCost || 0);
-        }
-      } catch (_) {}
+        const [itemsSnap, metaSnap] = await Promise.all([
+          getDocs(collection(db, "slips", date, "items")),
+          getDoc(doc(db, "slips", date))
+        ]);
 
-    } catch (e) {
-      // date might not exist — skip
-    }
-  }
+        const dayData = { revenue: 0, cost: 0, qty: {} };
+        const productTotals = {};
+
+        itemsSnap.forEach(itemDoc => {
+          const d = itemDoc.data();
+          const price = Number(d.price) || 0;
+          const cost = Number(d.cost) || 0;
+          const qty = Number(d.qty) || 1;
+          const product = d.product || "อื่นๆ";
+
+          dayData.revenue += price;
+          dayData.cost += cost;
+          dayData.qty[product] = (dayData.qty[product] || 0) + qty;
+          productTotals[product] = (productTotals[product] || 0) + price;
+        });
+
+        if (metaSnap.exists()) {
+          dayData.cost += Number(metaSnap.data().globalCost || 0);
+        }
+
+        return { date, dayData, productTotals };
+      } catch (e) {
+        return { date, dayData: { revenue: 0, cost: 0, qty: {} }, productTotals: {} };
+      }
+    })
+  );
+
+  dailyEntries.forEach(({ date, dayData, productTotals }) => {
+    daily[date] = dayData;
+    Object.entries(productTotals).forEach(([product, total]) => {
+      productMap[product] = (productMap[product] || 0) + total;
+    });
+  });
 
   // Build chart arrays
   const labels = dates;
@@ -1239,6 +1396,21 @@ window.loadChartData = async function () {
     backgroundColor: prodColors[i % prodColors.length] + "cc",
     borderRadius: 4,
     yAxisID: "y",
+    order: 2,
+  }));
+
+  const lineDatasets = allProducts.map((prod, i) => ({
+    type: "line",
+    label: `เส้น${prod}`,
+    data: activeQtyMap.map(q => q[prod] || 0),
+    borderColor: prodColors[i % prodColors.length],
+    backgroundColor: "transparent",
+    tension: 0.35,
+    pointRadius: 2,
+    pointHoverRadius: 4,
+    borderWidth: 2,
+    spanGaps: true,
+    yAxisID: "y",
     order: 1,
   }));
 
@@ -1248,7 +1420,7 @@ window.loadChartData = async function () {
   chartQty = new Chart(qtyEl, {
     data: {
       labels: activeDates,
-      datasets: barDatasets,
+      datasets: [...barDatasets, ...lineDatasets],
     },
     options: {
       responsive: true,
@@ -1256,10 +1428,14 @@ window.loadChartData = async function () {
         legend: {
           labels: {
             color: "#ccc", font: { size: 12 },
-            // filter: (item) => !item.text.startsWith("เส้น"),
+            filter: (item) => !item.text.startsWith("เส้น"),
           },
         },
-        tooltip: { mode: "index", intersect: false },
+        tooltip: {
+          mode: "index",
+          intersect: false,
+          filter: (item) => !item.dataset.label.startsWith("เส้น"),
+        },
       },
       scales: {
         x:  { ticks: { color: "#888" }, grid: { color: "#222" } },
@@ -1267,6 +1443,296 @@ window.loadChartData = async function () {
       },
     },
   });
+};
+
+let loadedEditItems = [];
+
+function setEditSavedStatus(text, color = "#888") {
+  const statusEl = document.getElementById("editSavedStatus");
+  if (!statusEl) return;
+  statusEl.innerText = text;
+  statusEl.style.color = color;
+}
+
+function renderEditSavedCostRows(costBreakdown = []) {
+  const container = document.getElementById("editSavedCostRows");
+  if (!container) return;
+
+  container.innerHTML = "";
+  const rows = costBreakdown.length > 0 ? costBreakdown : [{ type: "packaging", amount: "" }];
+  rows.forEach(item => addSavedEditCostRow(item.type, item.amount));
+}
+
+function renderEditSavedItems(items = []) {
+  const container = document.getElementById("editSavedItems");
+  if (!container) return;
+
+  container.innerHTML = "";
+  if (items.length === 0) {
+    container.innerHTML = `<div style="color:#888; font-size:13px;">ยังไม่มีรายการสินค้าในวันที่เลือก</div>`;
+    return;
+  }
+
+  items.forEach(item => addSavedEditItem(item));
+}
+
+window.addSavedEditCostRow = function(type = "packaging", amount = "") {
+  const container = document.getElementById("editSavedCostRows");
+  if (!container) return;
+
+  const row = document.createElement("div");
+  row.className = "edit-saved-cost-row";
+  row.style.cssText = "display:flex; gap:12px; align-items:center; flex-wrap:wrap;";
+  row.innerHTML = `
+    <select class="edit-saved-cost-type" style="background:#6b7280; color:white; border:1px solid #565c67; padding:0 14px; width:180px; height:44px; border-radius:10px; font-size:15px; font-weight:600; box-sizing:border-box;">
+      ${createCostOptions(type)}
+    </select>
+    <input type="number" class="edit-saved-cost-amount" placeholder="ใส่ต้นทุน" value="${amount}"
+      style="background:#f3f4f6; color:#2f3437; border:1px solid #d1d5db; padding:0 14px; width:180px; height:44px; border-radius:10px; font-size:15px; font-weight:600; box-sizing:border-box;">
+    <button onclick="removeSavedEditCostRow(this)" style="background:#f3f4f6; color:#8b1e1e; border:1px solid #d1d5db; width:44px; height:44px; border-radius:10px; cursor:pointer; font-size:22px; font-weight:700; line-height:1;">x</button>
+  `;
+
+  const placeholder = container.querySelector("div[style*='font-size:13px']");
+  if (placeholder) placeholder.remove();
+  container.appendChild(row);
+};
+
+window.removeSavedEditCostRow = function(button) {
+  const row = button?.closest(".edit-saved-cost-row");
+  row?.remove();
+
+  const container = document.getElementById("editSavedCostRows");
+  if (container && container.children.length === 0) {
+    addSavedEditCostRow();
+  }
+};
+
+window.addSavedEditItem = function(item = {}) {
+  const container = document.getElementById("editSavedItems");
+  if (!container) return;
+
+  const placeholder = container.querySelector("div[style*='font-size:13px']");
+  if (placeholder) placeholder.remove();
+
+  const row = document.createElement("div");
+  row.className = "edit-saved-item-row";
+  row.dataset.itemId = item.id || "";
+  row.style.cssText = "display:flex; gap:12px; align-items:center; flex-wrap:wrap; background:#1a1a1a; padding:12px; border-radius:12px; border:1px solid #2a2a2a;";
+  row.innerHTML = `
+    <select class="edit-saved-product" style="flex:1.4; min-width:220px; height:44px; padding:0 14px; border-radius:10px; border:1px solid #333; background:#111; color:white; box-sizing:border-box;">
+      ${createProductOptionsMarkup(item.product || "")}
+    </select>
+    <input type="number" class="edit-saved-price" placeholder="ราคา" value="${item.price ?? ""}"
+      style="flex:0.8; min-width:140px; height:44px; padding:0 14px; border-radius:10px; border:1px solid #333; background:#111; color:white; box-sizing:border-box;">
+    <input type="number" class="edit-saved-qty" placeholder="จำนวน" value="${item.qty ?? 1}"
+      style="flex:0.6; min-width:120px; height:44px; padding:0 14px; border-radius:10px; border:1px solid #333; background:#111; color:white; box-sizing:border-box;">
+    <button onclick="removeSavedEditItem(this)" style="background:#222; color:#ff6b6b; border:1px solid #444; width:44px; height:44px; border-radius:10px; cursor:pointer; font-size:22px; font-weight:700; line-height:1;">x</button>
+  `;
+
+  container.appendChild(row);
+};
+
+window.removeSavedEditItem = function(button) {
+  const row = button?.closest(".edit-saved-item-row");
+  row?.remove();
+
+  const container = document.getElementById("editSavedItems");
+  if (container && container.children.length === 0) {
+    container.innerHTML = `<div style="color:#888; font-size:13px;">ยังไม่มีรายการสินค้าในวันที่เลือก</div>`;
+  }
+};
+
+window.loadSavedDataForEdit = async function() {
+  if (!auth.currentUser) {
+    alert("กรุณา login ก่อน");
+    return;
+  }
+
+  const date = document.getElementById("editDateInput")?.value;
+  if (!date) {
+    alert("เลือกวันที่ก่อน");
+    return;
+  }
+
+  setEditSavedStatus("กำลังโหลดข้อมูล...", "#aaa");
+
+  try {
+    await loadStocks();
+
+    const [itemsSnap, metaSnap] = await Promise.all([
+      getDocs(collection(db, "slips", date, "items")),
+      getDoc(doc(db, "slips", date))
+    ]);
+
+    loadedEditItems = [];
+    itemsSnap.forEach(itemDoc => {
+      const data = itemDoc.data() || {};
+      loadedEditItems.push({
+        id: itemDoc.id,
+        product: data.product || "",
+        qty: Number(data.qty || 1),
+        price: Number(data.price || 0),
+        cost: Number(data.cost || 0),
+        source: data.source || "",
+        createdAt: data.createdAt || ""
+      });
+    });
+
+    const costBreakdown = metaSnap.exists()
+      ? (metaSnap.data().costBreakdown || []).filter(item => Number(item.amount || 0) > 0)
+      : [];
+
+    renderEditSavedCostRows(costBreakdown);
+    renderEditSavedItems(loadedEditItems);
+
+    const countText = loadedEditItems.length > 0
+      ? `โหลดสินค้า ${loadedEditItems.length} รายการ`
+      : "ไม่มีสินค้าในวันที่เลือก";
+    const costText = costBreakdown.length > 0
+      ? `ต้นทุน ${costBreakdown.length} รายการ`
+      : "ไม่มีต้นทุน";
+    setEditSavedStatus(`${countText} | ${costText}`, "#4ade80");
+  } catch (error) {
+    console.error(error);
+    setEditSavedStatus("โหลดข้อมูลไม่สำเร็จ", "#f87171");
+    alert("error: " + error.message);
+  }
+};
+
+window.saveSavedDataEdits = async function() {
+  if (!auth.currentUser) {
+    alert("กรุณา login ก่อน");
+    return;
+  }
+
+  const date = document.getElementById("editDateInput")?.value;
+  if (!date) {
+    alert("เลือกวันที่ก่อน");
+    return;
+  }
+
+  const costBreakdown = Array.from(document.querySelectorAll(".edit-saved-cost-row"))
+    .map(row => ({
+      type: row.querySelector(".edit-saved-cost-type")?.value || "packaging",
+      amount: Number(row.querySelector(".edit-saved-cost-amount")?.value || 0)
+    }))
+    .filter(item => item.amount > 0);
+
+  const items = Array.from(document.querySelectorAll(".edit-saved-item-row"))
+    .map(row => ({
+      id: row.dataset.itemId || "",
+      product: row.querySelector(".edit-saved-product")?.value || "",
+      price: Number(row.querySelector(".edit-saved-price")?.value || 0),
+      qty: Number(row.querySelector(".edit-saved-qty")?.value || 0)
+    }))
+    .filter(item => item.product && item.qty > 0);
+
+  if (items.length === 0 && costBreakdown.length === 0) {
+    alert("ไม่มีข้อมูล");
+    return;
+  }
+
+  try {
+    await loadStocks();
+
+    const originalItems = loadedEditItems.map(item => ({
+      product: item.product,
+      qty: Number(item.qty || 0)
+    }));
+
+    const stockDeltaMap = {};
+    originalItems.forEach(item => {
+      if (!item.product || item.qty <= 0) return;
+      stockDeltaMap[item.product] = (stockDeltaMap[item.product] || 0) + item.qty;
+    });
+
+    const preparedItems = items.map(item => {
+      const stock = stockList.find(s => s.id === item.product);
+      return {
+        ...item,
+        cost: Number(stock?.cost || 0) * item.qty
+      };
+    });
+
+    preparedItems.forEach(item => {
+      if (!item.product || item.qty <= 0) return;
+      stockDeltaMap[item.product] = (stockDeltaMap[item.product] || 0) - item.qty;
+    });
+
+    for (const [product, delta] of Object.entries(stockDeltaMap)) {
+      if (!delta) continue;
+      const stockRef = doc(db, "stocks", product);
+      const stockSnap = await getDoc(stockRef);
+      if (!stockSnap.exists()) continue;
+
+      const currentStock = Number(stockSnap.data().stock || 0);
+      const nextStock = currentStock + delta;
+      if (nextStock < 0) {
+        alert(`stock ของ "${product}" ไม่พอสำหรับการแก้ไขครั้งนี้`);
+        return;
+      }
+    }
+
+    const currentIds = new Set(preparedItems.filter(item => item.id).map(item => item.id));
+    const removedIds = loadedEditItems
+      .map(item => item.id)
+      .filter(id => id && !currentIds.has(id));
+
+    await Promise.all(
+      removedIds.map(id => deleteDoc(doc(db, "slips", date, "items", id)))
+    );
+
+    for (const item of preparedItems) {
+      const itemId = item.id || `edit-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const originalItem = loadedEditItems.find(savedItem => savedItem.id === item.id);
+      await setDoc(
+        doc(db, "slips", date, "items", itemId),
+        {
+          product: item.product,
+          qty: item.qty,
+          price: item.price,
+          cost: item.cost,
+          source: originalItem?.source || "edited",
+          createdAt: originalItem?.createdAt || new Date(),
+          userId: auth.currentUser.uid,
+          email: auth.currentUser.email
+        }
+      );
+    }
+
+    for (const [product, delta] of Object.entries(stockDeltaMap)) {
+      if (!delta) continue;
+      const stockRef = doc(db, "stocks", product);
+      const stockSnap = await getDoc(stockRef);
+      if (!stockSnap.exists()) continue;
+
+      const currentStock = Number(stockSnap.data().stock || 0);
+      await updateDoc(stockRef, {
+        stock: currentStock + delta
+      });
+    }
+
+    const globalCost = costBreakdown.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    await setDoc(
+      doc(db, "slips", date),
+      {
+        globalCost,
+        costBreakdown
+      },
+      { merge: true }
+    );
+
+    stockCache = null;
+    await fetchStocks(true);
+    await loadSavedDataForEdit();
+    await loadChartData();
+    setEditSavedStatus("บันทึกการแก้ไขสำเร็จ", "#4ade80");
+    alert("บันทึกการแก้ไขสำเร็จ");
+  } catch (error) {
+    console.error(error);
+    setEditSavedStatus("บันทึกการแก้ไขไม่สำเร็จ", "#f87171");
+    alert("error: " + error.message);
+  }
 };
 
 // =========================
@@ -1363,20 +1829,40 @@ window.saveModal = async function() {
       return;
     }
 
-      const rows = document.querySelectorAll(".modal-goods-row");
+    const rows = Array.from(document.querySelectorAll(".modal-goods-row"));
+    const goodsData = rows
+      .map(row => {
+        const product = row.querySelector(".modal-product")?.value || "";
+        const qty = Number(row.querySelector(".modal-qty")?.value || 1);
+        const price = Number(row.querySelector(".modal-price")?.value || 0);
+        return { product, qty, price };
+      })
+      .filter(item => item.product && item.qty > 0);
 
-    if (rows.length === 0) {
-      alert("ไม่มีสินค้า");
+    const newData = Array.from(
+      document.querySelectorAll(
+        "#modalCostContainer > div"
+      )
+    ).map(row => ({
+      type:
+        row.querySelector(".modal-cost-name")
+          ?.value || "packaging",
+      amount: Number(
+        row.querySelector(".modal-cost-price")
+          ?.value || 0
+      )
+    })).filter(item => item.amount > 0);
+
+    if (goodsData.length === 0 && newData.length === 0) {
+      alert("ไม่มีข้อมูล");
       return;
     }
 
     // =========================
     // save goods
     // =========================
-    for (const row of rows) {
-      const product = row.querySelector(".modal-product")?.value || "";
-      const qty = Number(row.querySelector(".modal-qty")?.value || 1);
-      const price = Number(row.querySelector(".modal-price")?.value || 0);
+    for (const item of goodsData) {
+      const { product, qty, price } = item;
 
       // ✅ ดึง cost จาก stock
       const stock = stockList.find(s => s.id === product);
@@ -1446,23 +1932,6 @@ window.saveModal = async function() {
         : [];
 
     // ดึง cost จาก modal
-    const newData = Array.from(
-      document.querySelectorAll(
-        "#modalCostContainer > div"
-      )
-    ).map(row => ({
-
-      type:
-        row.querySelector(".modal-cost-name")
-          ?.value || "",
-
-      amount: Number(
-        row.querySelector(".modal-cost-price")
-          ?.value || 0
-      )
-
-    }));
-
     // รวมของเก่า + ใหม่
     const merged = [
       ...oldData,
