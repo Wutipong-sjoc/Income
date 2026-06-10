@@ -306,23 +306,42 @@ window.autoMatchBill = function(priceInput) {
 // =========================
 window.addItemToSlip = function() {
   const itemsContainer = document.getElementById("rightItems"); if (!itemsContainer) return;
+  const firstSlip = document.querySelector("#slipContainer [data-slip]");
+  const defaultPrice = Number(firstSlip?.querySelector(".bill-price")?.value || 0);
   const row = document.createElement("div");
   row.style.cssText = "display:flex; gap:10px; padding:12px; margin-top:16px; background:#2b2b2b; border-radius:12px;";
   row.innerHTML = `
     <div style="flex:1.5; background:#eceff3; color:#374151; padding:12px; text-align:center; border-radius:12px; border:1px solid #d7dbe2; font-weight:700;">
       สินค้า<br>
-      <select class="product" style="width:90%; margin-top:6px; height:40px; border-radius:10px; border:1px solid #d1d5db; background:#ffffff; padding:0 12px; color:#2f3437; box-sizing:border-box;"></select>
+      <select class="product" onchange="autoFillItemRow(this)" style="width:90%; margin-top:6px; height:40px; border-radius:10px; border:1px solid #d1d5db; background:#ffffff; padding:0 12px; color:#2f3437; box-sizing:border-box;"></select>
+    </div>
+
+    <div style="flex:0.8; background:#eceff3; color:#374151; padding:12px; text-align:center; border-radius:12px; border:1px solid #d7dbe2; font-weight:700;">
+      price<br>
+      <input type="number" class="unit-price" value="${defaultPrice || ""}" min="0" oninput="refreshItemRow(this)" style="width:90%; margin-top:6px; height:40px; border-radius:10px; border:1px solid #d1d5db; background:#ffffff; padding:0 12px; color:#2f3437; box-sizing:border-box;">
+    </div>
+
+    <div style="flex:0.8; background:#eceff3; color:#374151; padding:12px; text-align:center; border-radius:12px; border:1px solid #d7dbe2; font-weight:700;">
+      cost<br>
+      <input type="number" class="cost" value="" min="0" oninput="refreshItemRow(this)" style="width:90%; margin-top:6px; height:40px; border-radius:10px; border:1px solid #d1d5db; background:#ffffff; padding:0 12px; color:#2f3437; box-sizing:border-box;">
     </div>
 
     <div style="flex:0.6; background:#eceff3; color:#374151; padding:12px; text-align:center; border-radius:12px; border:1px solid #d7dbe2; font-weight:700;">
-      จำนวน<br>
-      <input type="number" class="qty" value="1" min="1" style="width:90%; margin-top:6px; height:40px; border-radius:10px; border:1px solid #d1d5db; background:#ffffff; padding:0 12px; color:#2f3437; box-sizing:border-box;">
+      qty<br>
+      <input type="number" class="qty" value="1" min="1" oninput="refreshItemRow(this)" style="width:90%; margin-top:6px; height:40px; border-radius:10px; border:1px solid #d1d5db; background:#ffffff; padding:0 12px; color:#2f3437; box-sizing:border-box;">
+    </div>
+
+    <div style="flex:0.9; background:#eceff3; color:#374151; padding:12px; text-align:center; border-radius:12px; border:1px solid #d7dbe2; font-weight:700;">
+      total price<br>
+      <input type="number" class="total-price" value="${defaultPrice || 0}" readonly style="width:90%; margin-top:6px; height:40px; border-radius:10px; border:1px solid #d1d5db; background:#f9fafb; padding:0 12px; color:#2f3437; box-sizing:border-box;">
     </div>
 
     <button onclick="removeItem(this)" style="align-self:center; background:#f3f4f6; border:1px solid #d1d5db; color:#8b1e1e; width:42px; height:42px; border-radius:10px; font-size:22px; cursor:pointer;">x</button>
   `;
   itemsContainer.appendChild(row);
   fillSelect(row.querySelector(".product"));
+  autoFillRowFromStock(row, { overwritePrice: false, overwriteCost: false });
+  updateComputedFields(row);
 };
 
 window.showAndAddItem = function() {
@@ -477,7 +496,8 @@ window.autoFillCost = function(selectEl) {
   if (!stock) return;
   const row = selectEl.closest("div[style*=flex]");
   const costInput = row.querySelector(".cost");
-  if (costInput && stock.cost) costInput.value = stock.cost;
+  if (costInput) costInput.value = stock.cost || 0;
+  updateComputedFields(row);
 };
 
 // =========================
@@ -493,21 +513,18 @@ function getAllData() {
 
     const product = row.querySelector(".product")?.value || "";
     const qty = Number(row.querySelector(".qty")?.value || 1);
-
-    // เอาราคาจาก slip แรก
-    const firstSlip = document.querySelector("#slipContainer [data-slip]");
-    const price = Number(firstSlip?.querySelector(".bill-price")?.value || 0);
+    const price = Number(row.querySelector(".unit-price")?.value || 0);
+    const cost = Number(row.querySelector(".cost")?.value || 0);
 
     if (!product || qty <= 0 || price <= 0) return;
 
-    const stockItem = stockList.find(s => s.id === product);
-    const stockCost = stockItem?.cost || 0;
-
     data.push({
-      price: price,
-      product: product,
-      qty: qty,
-      cost: stockCost * qty,
+      price,
+      product,
+      qty,
+      cost,
+      totalPrice: price * qty,
+      totalCost: cost * qty,
     });
 
   });
@@ -599,9 +616,11 @@ window.saveData = async function () {
         collection(db, "slips", date, "items"),
         {
           price:   item.price,
+          totalPrice: item.totalPrice ?? (Number(item.price || 0) * Number(item.qty || 0)),
           product: item.product,
           qty:     item.qty || 1,
           cost:    item.cost,
+          totalCost: item.totalCost ?? (Number(item.cost || 0) * Number(item.qty || 0)),
           userId: auth.currentUser.uid,
           email: auth.currentUser.email
         }
@@ -876,6 +895,82 @@ function createProductOptionsMarkup(selected = "") {
     </option>
   `).join("");
 }
+
+function getStockById(id) {
+  return stockList.find(item => item.id === id);
+}
+
+function getItemUnitValues(row) {
+  return {
+    product: row.querySelector(".product, .modal-product, .edit-saved-product")?.value || "",
+    qty: Number(row.querySelector(".qty, .modal-qty, .edit-saved-qty")?.value || 0),
+    price: Number(row.querySelector(".unit-price, .modal-price, .edit-saved-price")?.value || 0),
+    cost: Number(row.querySelector(".cost, .modal-cost, .edit-saved-cost")?.value || 0)
+  };
+}
+
+function updateComputedFields(row) {
+  if (!row) return;
+
+  const { qty, price, cost } = getItemUnitValues(row);
+  const totalPrice = price * qty;
+  const totalCost = cost * qty;
+
+  const totalPriceInput = row.querySelector(".total-price, .modal-total-price, .edit-saved-total-price");
+  if (totalPriceInput) totalPriceInput.value = totalPrice || 0;
+
+  const totalCostInput = row.querySelector(".total-cost, .modal-total-cost, .edit-saved-total-cost");
+  if (totalCostInput) totalCostInput.value = totalCost || 0;
+}
+
+function autoFillRowFromStock(row, options = {}) {
+  if (!row) return;
+
+  const {
+    overwritePrice = false,
+    overwriteCost = true
+  } = options;
+
+  const product = row.querySelector(".product, .modal-product, .edit-saved-product")?.value || "";
+  const stock = getStockById(product);
+  if (!stock) {
+    updateComputedFields(row);
+    return;
+  }
+
+  const priceInput = row.querySelector(".unit-price, .modal-price, .edit-saved-price");
+  const costInput = row.querySelector(".cost, .modal-cost, .edit-saved-cost");
+
+  if (priceInput && (overwritePrice || Number(priceInput.value || 0) <= 0)) {
+    priceInput.value = Number(stock.selling || 0);
+  }
+
+  if (costInput && (overwriteCost || Number(costInput.value || 0) <= 0)) {
+    costInput.value = Number(stock.cost || 0);
+  }
+
+  updateComputedFields(row);
+}
+
+window.refreshItemRow = function(element) {
+  const row = element?.closest("#rightItems > div, .modal-goods-row, .edit-saved-item-row");
+  updateComputedFields(row);
+};
+
+window.autoFillItemRow = function(selectEl) {
+  const row = selectEl?.closest("#rightItems > div");
+  autoFillRowFromStock(row, { overwritePrice: false, overwriteCost: false });
+};
+
+window.autoFillModalRow = function(selectEl) {
+  const row = selectEl?.closest(".modal-goods-row");
+  autoFillRowFromStock(row, { overwritePrice: true, overwriteCost: true });
+};
+
+window.autoFillEditRow = function(selectEl) {
+  const row = selectEl?.closest(".edit-saved-item-row");
+  autoFillRowFromStock(row, { overwritePrice: false, overwriteCost: true });
+};
 
 window.refreshStocks = async function() {
   await fetchStocks(true);
@@ -1223,8 +1318,8 @@ window.loadChartData = async function () {
 
         itemsSnap.forEach(itemDoc => {
           const d = itemDoc.data();
-          const price = Number(d.price) || 0;
-          const cost = Number(d.cost) || 0;
+          const price = Number(d.totalPrice ?? d.price) || 0;
+          const cost = Number(d.totalCost ?? d.cost) || 0;
           const qty = Number(d.qty) || 1;
           const product = d.product || "อื่นๆ";
 
@@ -1447,6 +1542,26 @@ window.loadChartData = async function () {
 
 let loadedEditItems = [];
 
+function getStoredTotals(itemData = {}) {
+  const qty = Number(itemData.qty || 1) || 1;
+  const hasTotalPrice = itemData.totalPrice !== undefined && itemData.totalPrice !== null;
+  const hasTotalCost = itemData.totalCost !== undefined && itemData.totalCost !== null;
+  const rawPrice = Number(itemData.price || 0);
+  const rawCost = Number(itemData.cost || 0);
+  const totalPrice = Number(hasTotalPrice ? itemData.totalPrice : rawPrice) || 0;
+  const totalCost = Number(hasTotalCost ? itemData.totalCost : rawCost) || 0;
+  const unitPrice = Number(hasTotalPrice ? rawPrice : (qty > 0 ? totalPrice / qty : totalPrice)) || 0;
+  const unitCost = Number(hasTotalCost ? rawCost : (qty > 0 ? totalCost / qty : totalCost)) || 0;
+
+  return {
+    qty,
+    price: unitPrice,
+    cost: unitCost,
+    totalPrice,
+    totalCost
+  };
+}
+
 function setEditSavedStatus(text, color = "#888") {
   const statusEl = document.getElementById("editSavedStatus");
   if (!statusEl) return;
@@ -1519,17 +1634,23 @@ window.addSavedEditItem = function(item = {}) {
   row.dataset.itemId = item.id || "";
   row.style.cssText = "display:flex; gap:12px; align-items:center; flex-wrap:wrap; background:#1a1a1a; padding:12px; border-radius:12px; border:1px solid #2a2a2a;";
   row.innerHTML = `
-    <select class="edit-saved-product" style="flex:1.4; min-width:220px; height:44px; padding:0 14px; border-radius:10px; border:1px solid #333; background:#111; color:white; box-sizing:border-box;">
+    <select class="edit-saved-product" onchange="autoFillEditRow(this)" style="flex:1.2; min-width:200px; height:44px; padding:0 14px; border-radius:10px; border:1px solid #333; background:#111; color:white; box-sizing:border-box;">
       ${createProductOptionsMarkup(item.product || "")}
     </select>
-    <input type="number" class="edit-saved-price" placeholder="ราคา" value="${item.price ?? ""}"
-      style="flex:0.8; min-width:140px; height:44px; padding:0 14px; border-radius:10px; border:1px solid #333; background:#111; color:white; box-sizing:border-box;">
-    <input type="number" class="edit-saved-qty" placeholder="จำนวน" value="${item.qty ?? 1}"
+    <input type="number" class="edit-saved-price" placeholder="price" value="${item.price ?? ""}" oninput="refreshItemRow(this)"
+      style="flex:0.7; min-width:120px; height:44px; padding:0 14px; border-radius:10px; border:1px solid #333; background:#111; color:white; box-sizing:border-box;">
+    <input type="number" class="edit-saved-cost" placeholder="cost" value="${item.cost ?? ""}" oninput="refreshItemRow(this)"
+      style="flex:0.7; min-width:120px; height:44px; padding:0 14px; border-radius:10px; border:1px solid #333; background:#111; color:white; box-sizing:border-box;">
+    <input type="number" class="edit-saved-qty" placeholder="qty" value="${item.qty ?? 1}" oninput="refreshItemRow(this)"
       style="flex:0.6; min-width:120px; height:44px; padding:0 14px; border-radius:10px; border:1px solid #333; background:#111; color:white; box-sizing:border-box;">
+    <input type="number" class="edit-saved-total-price" placeholder="total price" value="${item.totalPrice ?? 0}" readonly
+      style="flex:0.8; min-width:140px; height:44px; padding:0 14px; border-radius:10px; border:1px solid #333; background:#161616; color:#9ad1ff; box-sizing:border-box;">
     <button onclick="removeSavedEditItem(this)" style="background:#222; color:#ff6b6b; border:1px solid #444; width:44px; height:44px; border-radius:10px; cursor:pointer; font-size:22px; font-weight:700; line-height:1;">x</button>
   `;
 
   container.appendChild(row);
+  autoFillRowFromStock(row, { overwritePrice: false, overwriteCost: true });
+  updateComputedFields(row);
 };
 
 window.removeSavedEditItem = function(button) {
@@ -1540,6 +1661,13 @@ window.removeSavedEditItem = function(button) {
   if (container && container.children.length === 0) {
     container.innerHTML = `<div style="color:#888; font-size:13px;">ยังไม่มีรายการสินค้าในวันที่เลือก</div>`;
   }
+};
+
+window.clearSavedEditForm = function() {
+  loadedEditItems = [];
+  renderEditSavedCostRows([]);
+  renderEditSavedItems([]);
+  setEditSavedStatus("ล้างข้อมูลในส่วนแก้ไขแล้ว", "#888");
 };
 
 window.loadSavedDataForEdit = async function() {
@@ -1567,12 +1695,15 @@ window.loadSavedDataForEdit = async function() {
     loadedEditItems = [];
     itemsSnap.forEach(itemDoc => {
       const data = itemDoc.data() || {};
+      const totals = getStoredTotals(data);
       loadedEditItems.push({
         id: itemDoc.id,
         product: data.product || "",
-        qty: Number(data.qty || 1),
-        price: Number(data.price || 0),
-        cost: Number(data.cost || 0),
+        qty: totals.qty,
+        price: totals.price,
+        cost: totals.cost,
+        totalPrice: totals.totalPrice,
+        totalCost: totals.totalCost,
         source: data.source || "",
         createdAt: data.createdAt || ""
       });
@@ -1623,6 +1754,7 @@ window.saveSavedDataEdits = async function() {
       id: row.dataset.itemId || "",
       product: row.querySelector(".edit-saved-product")?.value || "",
       price: Number(row.querySelector(".edit-saved-price")?.value || 0),
+      cost: Number(row.querySelector(".edit-saved-cost")?.value || 0),
       qty: Number(row.querySelector(".edit-saved-qty")?.value || 0)
     }))
     .filter(item => item.product && item.qty > 0);
@@ -1647,10 +1779,10 @@ window.saveSavedDataEdits = async function() {
     });
 
     const preparedItems = items.map(item => {
-      const stock = stockList.find(s => s.id === item.product);
       return {
         ...item,
-        cost: Number(stock?.cost || 0) * item.qty
+        totalPrice: Number(item.price || 0) * Number(item.qty || 0),
+        totalCost: Number(item.cost || 0) * Number(item.qty || 0)
       };
     });
 
@@ -1691,7 +1823,9 @@ window.saveSavedDataEdits = async function() {
           product: item.product,
           qty: item.qty,
           price: item.price,
+          totalPrice: item.totalPrice,
           cost: item.cost,
+          totalCost: item.totalCost,
           source: originalItem?.source || "edited",
           createdAt: originalItem?.createdAt || new Date(),
           userId: auth.currentUser.uid,
@@ -1835,7 +1969,8 @@ window.saveModal = async function() {
         const product = row.querySelector(".modal-product")?.value || "";
         const qty = Number(row.querySelector(".modal-qty")?.value || 1);
         const price = Number(row.querySelector(".modal-price")?.value || 0);
-        return { product, qty, price };
+        const cost = Number(row.querySelector(".modal-cost")?.value || 0);
+        return { product, qty, price, cost };
       })
       .filter(item => item.product && item.qty > 0);
 
@@ -1862,12 +1997,7 @@ window.saveModal = async function() {
     // save goods
     // =========================
     for (const item of goodsData) {
-      const { product, qty, price } = item;
-
-      // ✅ ดึง cost จาก stock
-      const stock = stockList.find(s => s.id === product);
-
-      const cost = Number(stock?.cost || 0) * qty;
+      const { product, qty, price, cost } = item;
 
       // ✅ custom document id
       const docId =
@@ -1881,7 +2011,9 @@ window.saveModal = async function() {
           product,
           qty,
           price,
+          totalPrice: price * qty,
           cost,
+          totalCost: cost * qty,
           source: "manual",
           createdAt: new Date(),
 
@@ -2014,15 +2146,24 @@ window.addModalGoodsRow = function() {
 
   row.innerHTML = `
   <div style="display:flex; gap:12px; width:100%;">
-    <select class="modal-product" onchange="autoFillModalPrice(this)"
-      style="flex:1.2; min-width:0; height:48px; padding:0 14px; border-radius:10px; border:1px solid #333; background:#111; color:white; box-sizing:border-box;">
+    <select class="modal-product" onchange="autoFillModalRow(this)"
+      style="flex:1.0; min-width:0; height:48px; padding:0 14px; border-radius:10px; border:1px solid #333; background:#111; color:white; box-sizing:border-box;">
     </select>
 
-    <input type="number" class="modal-price" placeholder="ราคา"
+    <input type="number" class="modal-price" placeholder="price"
+      oninput="refreshItemRow(this)"
       style="flex:0.7; min-width:0; height:48px; padding:0 14px; border-radius:10px; border:1px solid #333; background:#111; color:white; box-sizing:border-box;">
 
-    <input class="modal-qty" type="number" placeholder="จำนวนสินค้าที่ขายได้" 
-      style=" flex:0.8; min-width:0; height:48px; padding:0 14px; border-radius:10px; border:1px solid #333; background:#111; color:white; box-sizing:border-box;">
+    <input type="number" class="modal-cost" placeholder="cost"
+      oninput="refreshItemRow(this)"
+      style="flex:0.7; min-width:0; height:48px; padding:0 14px; border-radius:10px; border:1px solid #333; background:#111; color:white; box-sizing:border-box;">
+
+    <input class="modal-qty" type="number" placeholder="qty" 
+      oninput="refreshItemRow(this)"
+      style=" flex:0.5; min-width:0; height:48px; padding:0 14px; border-radius:10px; border:1px solid #333; background:#111; color:white; box-sizing:border-box;">
+
+    <input type="number" class="modal-total-price" placeholder="total price" readonly
+      style="flex:0.8; min-width:0; height:48px; padding:0 14px; border-radius:10px; border:1px solid #333; background:#161616; color:#9ad1ff; box-sizing:border-box;">
   </div>
 
     <button
@@ -2038,21 +2179,10 @@ window.addModalGoodsRow = function() {
 
   fillSelect(select);
 
-  // auto fill ทันทีหลังโหลด option
-  autoFillModalPrice(select);
+  autoFillModalRow(select);
   
 }
 
 window.autoFillModalPrice = function(selectEl) {
-
-  const stock = stockList.find(s => s.id === selectEl.value);
-  if (!stock) return;
-
-  const row = selectEl.closest("div[style*='display:flex']");
-  if (!row) return;
-
-  const priceInput = row.querySelector(".modal-price");
-  if (!priceInput) return;
-
-  priceInput.value = stock.selling || 0;
+  autoFillModalRow(selectEl);
 };
